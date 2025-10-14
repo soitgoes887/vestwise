@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/vestwise/static/css/main.c855c0ed.css",
-    "main.js": "/vestwise/static/js/main.a719ab1e.js",
+    "main.css": "/vestwise/static/css/main.81c29850.css",
+    "main.js": "/vestwise/static/js/main.97ca5a5b.js",
     "static/js/453.82005d7e.chunk.js": "/vestwise/static/js/453.82005d7e.chunk.js",
     "index.html": "/vestwise/index.html",
-    "main.c855c0ed.css.map": "/vestwise/static/css/main.c855c0ed.css.map",
-    "main.a719ab1e.js.map": "/vestwise/static/js/main.a719ab1e.js.map",
+    "main.81c29850.css.map": "/vestwise/static/css/main.81c29850.css.map",
+    "main.97ca5a5b.js.map": "/vestwise/static/js/main.97ca5a5b.js.map",
     "453.82005d7e.chunk.js.map": "/vestwise/static/js/453.82005d7e.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.c855c0ed.css",
-    "static/js/main.a719ab1e.js"
+    "static/css/main.81c29850.css",
+    "static/js/main.97ca5a5b.js"
   ]
 }
