@@ -272,12 +272,12 @@ const RSUESPPCalculator = () => {
   }, [params, rsuGrants, esppConfig]);
 
   return (
-    <div className="w-full p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">RSU & ESPP Calculator</h1>
+    <div className="w-full p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-gray-800 dark:text-white">RSU & ESPP Calculator</h1>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Left side - Input panels */}
-        <div className="w-96 flex-shrink-0 space-y-6">
+        <div className="w-full lg:w-96 lg:flex-shrink-0 space-y-6">
           <div className="bg-indigo-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-indigo-200 dark:border-indigo-600">
             <h2 className="text-xl font-semibold text-indigo-900 dark:text-white mb-3">RSU Grants</h2>
 
@@ -577,10 +577,11 @@ const RSUESPPCalculator = () => {
         </div>
 
         {/* Right side - Charts and table */}
-        <div className="flex-1 space-y-8">
-          <div>
-            <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Total Shares Projection</h2>
-            <ResponsiveContainer width="100%" height={400}>
+        <div className="flex-1 space-y-8 min-w-0">
+          <div className="overflow-hidden">
+            <h2 className="text-xl md:text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Total Shares Projection</h2>
+            <div className="w-full" style={{ minHeight: '300px', height: '400px' }}>
+              <ResponsiveContainer width="100%" height="100%">
               <LineChart data={calculations}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="year" label={{ value: 'Years', position: 'insideBottom', offset: -5 }} />
@@ -592,11 +593,13 @@ const RSUESPPCalculator = () => {
                 <Line type="monotone" dataKey="totalShares" stroke="#8b5cf6" name="Total Shares" strokeWidth={3} />
               </LineChart>
             </ResponsiveContainer>
+            </div>
           </div>
 
-          <div>
-            <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Portfolio Value Projection</h2>
-            <ResponsiveContainer width="100%" height={400}>
+          <div className="overflow-hidden">
+            <h2 className="text-xl md:text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Portfolio Value Projection</h2>
+            <div className="w-full" style={{ minHeight: '300px', height: '400px' }}>
+              <ResponsiveContainer width="100%" height="100%">
               <BarChart data={calculations}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="year" label={{ value: 'Years', position: 'insideBottom', offset: -5 }} />
@@ -610,10 +613,11 @@ const RSUESPPCalculator = () => {
                 <Bar dataKey={showGbp ? "esppValueGbp" : "esppValue"} stackId="a" fill="#10b981" name="ESPP Value" />
               </BarChart>
             </ResponsiveContainer>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Detailed Year-by-Year Breakdown</h2>
+            <h2 className="text-xl md:text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Detailed Year-by-Year Breakdown</h2>
             <table className="w-full border-collapse border border-gray-300 dark:border-gray-600">
               <thead className="bg-gray-100 dark:bg-gray-700">
                 <tr>
