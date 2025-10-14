@@ -100,14 +100,16 @@ const RSUESPPCalculator = () => {
     switch(schedule) {
       case '1y-cliff':
         return { periods: 1, intervalMonths: 12 };
+      case '3y-annual':
+        return { periods: 3, intervalMonths: 12 };
+      case '3y-6m':
+        return { periods: 6, intervalMonths: 6 };
       case '4y-3m':
         return { periods: 16, intervalMonths: 3 };
       case '4y-6m':
         return { periods: 8, intervalMonths: 6 };
       case '4y-annual':
         return { periods: 4, intervalMonths: 12 };
-      case '3y-6m':
-        return { periods: 6, intervalMonths: 6 };
       default:
         return { periods: 8, intervalMonths: 6 };
     }
@@ -117,14 +119,16 @@ const RSUESPPCalculator = () => {
     switch(schedule) {
       case '1y-cliff':
         return '1 Year Cliff (100% after 1 year)';
+      case '3y-annual':
+        return '3 Years Annual (3 periods)';
+      case '3y-6m':
+        return '3 Years Semi-Annual (6 periods)';
       case '4y-3m':
         return '4 Years Quarterly (16 periods)';
       case '4y-6m':
         return '4 Years Semi-Annual (8 periods)';
       case '4y-annual':
         return '4 Years Annual (4 periods)';
-      case '3y-6m':
-        return '3 Years Semi-Annual (6 periods)';
       default:
         return schedule;
     }
@@ -361,10 +365,11 @@ const RSUESPPCalculator = () => {
                     className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   >
                     <option value="1y-cliff">1 Year Cliff (100% after 1 year)</option>
-                    <option value="4y-3m">4 Years Quarterly (16 periods)</option>
-                    <option value="4y-6m">4 Years Semi-Annual (8 periods)</option>
-                    <option value="4y-annual">4 Years Annual (4 periods)</option>
+                    <option value="3y-annual">3 Years Annual (3 periods)</option>
                     <option value="3y-6m">3 Years Semi-Annual (6 periods)</option>
+                    <option value="4y-annual">4 Years Annual (4 periods)</option>
+                    <option value="4y-6m">4 Years Semi-Annual (8 periods)</option>
+                    <option value="4y-3m">4 Years Quarterly (16 periods)</option>
                   </select>
                 </div>
                 <button
@@ -641,7 +646,7 @@ const RSUESPPCalculator = () => {
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">{row.esppShares.toLocaleString()}</td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-semibold text-gray-900 dark:text-white">{row.totalShares.toLocaleString()}</td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-bold text-blue-700 dark:text-blue-400">
-                      {showGbp ? `£${row.totalValueGbp.toLocaleString()}` : `${row.totalValue.toLocaleString()}`}
+                      {showGbp ? `£${row.totalValueGbp.toLocaleString()}` : `$${row.totalValue.toLocaleString()}`}
                     </td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">
                       £{row.capitalGainGbp.toLocaleString()}
