@@ -239,9 +239,8 @@ const RSUESPPCalculator = () => {
       const esppValue = esppShares * currentStockPrice;
       
       // Calculate capital gains if selling all shares
-      // RSUs: cost basis is the value at vesting (already taxed as income)
+      // RSUs: cost basis is the value at vesting (already taxed as income, so no gain on RSUs)
       // ESPP: cost basis is the purchase price (includes discount)
-      const rsuCostBasis = rsuValue; // Already taxed at vesting, so no gain on RSUs
       const esppCostBasis = esppInvested / params.usdToGbp; // Convert GBP to USD
       const capitalGain = Math.max(0, esppValue - esppCostBasis);
       const capitalGainGbp = capitalGain / params.usdToGbp;
@@ -273,21 +272,21 @@ const RSUESPPCalculator = () => {
   }, [params, rsuGrants, esppConfig]);
 
   return (
-    <div className="w-full p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">RSU & ESPP Calculator</h1>
+    <div className="w-full p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">RSU & ESPP Calculator</h1>
 
       <div className="flex gap-6">
         {/* Left side - Input panels */}
         <div className="w-96 flex-shrink-0 space-y-6">
-          <div className="bg-indigo-50 p-4 rounded-lg border-2 border-indigo-200">
-            <h2 className="text-xl font-semibold text-indigo-900 mb-3">RSU Grants</h2>
+          <div className="bg-indigo-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-indigo-200 dark:border-indigo-600">
+            <h2 className="text-xl font-semibold text-indigo-900 dark:text-white mb-3">RSU Grants</h2>
 
             {rsuGrants.length > 0 && (
               <div className="space-y-2 mb-3">
                 {rsuGrants.map((grant) => (
-                  <div key={grant.id} className="bg-white p-3 rounded border border-indigo-200">
+                  <div key={grant.id} className="bg-white dark:bg-gray-700 p-3 rounded border border-indigo-200 dark:border-indigo-600">
                     <div className="flex justify-between items-start">
-                      <div className="text-sm">
+                      <div className="text-sm text-gray-900 dark:text-white">
                         <div><strong>Shares:</strong> {grant.totalShares}</div>
                         <div><strong>Grant Price:</strong> ${grant.grantPrice}</div>
                         <div><strong>Grant Date:</strong> {grant.grantDate}</div>
@@ -296,7 +295,7 @@ const RSUESPPCalculator = () => {
                       </div>
                       <button
                         onClick={() => handleRemoveGrant(grant.id)}
-                        className="text-red-600 hover:text-red-800 text-xl font-bold"
+                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-xl font-bold"
                       >
                         ×
                       </button>
@@ -308,58 +307,58 @@ const RSUESPPCalculator = () => {
 
             <button
               onClick={() => setShowAddGrant(!showAddGrant)}
-              className="w-full px-4 py-2 bg-indigo-600 text-white rounded font-semibold hover:bg-indigo-700 transition-colors"
+              className="w-full px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
             >
               {showAddGrant ? 'Cancel' : '+ Add RSU Grant'}
             </button>
 
             {showAddGrant && (
-              <div className="mt-4 space-y-3 bg-white p-3 rounded border border-indigo-300">
+              <div className="mt-4 space-y-3 bg-white dark:bg-gray-700 p-3 rounded border border-indigo-300 dark:border-indigo-600">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Grant Date</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Grant Date</label>
                   <input
                     type="date"
                     value={newGrant.grantDate}
                     onChange={(e) => setNewGrant({...newGrant, grantDate: e.target.value})}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Vest Start Date</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Vest Start Date</label>
                   <input
                     type="date"
                     value={newGrant.vestStartDate}
                     onChange={(e) => setNewGrant({...newGrant, vestStartDate: e.target.value})}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Total Shares</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Total Shares</label>
                   <input
                     type="number"
                     value={newGrant.totalShares}
                     onChange={(e) => setNewGrant({...newGrant, totalShares: e.target.value})}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                     placeholder="e.g., 1703"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Grant Price ($)</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Share Price at Grant Date ($)</label>
                   <input
                     type="number"
                     step="0.01"
                     value={newGrant.grantPrice}
                     onChange={(e) => setNewGrant({...newGrant, grantPrice: e.target.value})}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                     placeholder="e.g., 250"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Vesting Schedule</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Vesting Schedule</label>
                   <select
                     value={newGrant.vestingSchedule}
                     onChange={(e) => setNewGrant({...newGrant, vestingSchedule: e.target.value})}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   >
                     <option value="1y-cliff">1 Year Cliff (100% after 1 year)</option>
                     <option value="4y-3m">4 Years Quarterly (16 periods)</option>
@@ -370,7 +369,7 @@ const RSUESPPCalculator = () => {
                 </div>
                 <button
                   onClick={handleAddGrant}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded font-semibold hover:bg-green-700 transition-colors"
+                  className="w-full px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
                 >
                   Save Grant
                 </button>
@@ -378,13 +377,13 @@ const RSUESPPCalculator = () => {
             )}
           </div>
 
-          <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
-            <h2 className="text-xl font-semibold text-green-900 mb-3">ESPP Configuration</h2>
+          <div className="bg-green-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-green-200 dark:border-green-600">
+            <h2 className="text-xl font-semibold text-green-900 dark:text-white mb-3">ESPP Configuration</h2>
 
             {esppConfig.enabled && (
-              <div className="mb-3 bg-white p-3 rounded border border-green-200">
+              <div className="mb-3 bg-white dark:bg-gray-700 p-3 rounded border border-green-200 dark:border-green-600">
                 <div className="flex justify-between items-start">
-                  <div className="text-sm">
+                  <div className="text-sm text-gray-900 dark:text-white">
                     <div><strong>Monthly:</strong> £{esppConfig.monthlyContribution}</div>
                     <div><strong>Growth:</strong> {esppConfig.contributionGrowth}%</div>
                     <div><strong>Discount:</strong> {esppConfig.discount}%</div>
@@ -392,7 +391,7 @@ const RSUESPPCalculator = () => {
                   </div>
                   <button
                     onClick={handleDisableEspp}
-                    className="text-red-600 hover:text-red-800 text-xl font-bold"
+                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-xl font-bold"
                   >
                     ×
                   </button>
@@ -402,49 +401,49 @@ const RSUESPPCalculator = () => {
 
             <button
               onClick={() => setShowConfigureEspp(!showConfigureEspp)}
-              className="w-full px-4 py-2 bg-green-600 text-white rounded font-semibold hover:bg-green-700 transition-colors"
+              className="w-full px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
             >
               {showConfigureEspp ? 'Cancel' : esppConfig.enabled ? 'Edit ESPP' : '+ Configure ESPP'}
             </button>
 
             {showConfigureEspp && (
-              <div className="mt-4 space-y-3 bg-white p-3 rounded border border-green-300">
+              <div className="mt-4 space-y-3 bg-white dark:bg-gray-700 p-3 rounded border border-green-300 dark:border-green-600">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Monthly Contribution (£)</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Monthly Contribution (£)</label>
                   <input
                     type="number"
                     value={tempEsppConfig.monthlyContribution}
                     onChange={(e) => setTempEsppConfig({...tempEsppConfig, monthlyContribution: e.target.value})}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                     placeholder="e.g., 1000"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Annual Contribution Growth (%)</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Annual Contribution Growth (%)</label>
                   <input
                     type="number"
                     value={tempEsppConfig.contributionGrowth}
                     onChange={(e) => setTempEsppConfig({...tempEsppConfig, contributionGrowth: e.target.value})}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                     placeholder="e.g., 5"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">ESPP Discount (%)</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">ESPP Discount (%)</label>
                   <input
                     type="number"
                     value={tempEsppConfig.discount}
                     onChange={(e) => setTempEsppConfig({...tempEsppConfig, discount: e.target.value})}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                     placeholder="e.g., 15"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Purchase Period</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Purchase Period</label>
                   <select
                     value={tempEsppConfig.purchasePeriod}
                     onChange={(e) => setTempEsppConfig({...tempEsppConfig, purchasePeriod: e.target.value})}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   >
                     <option value="3">Quarterly (3 months)</option>
                     <option value="6">Semi-Annual (6 months)</option>
@@ -453,7 +452,7 @@ const RSUESPPCalculator = () => {
                 </div>
                 <button
                   onClick={handleSaveEsppConfig}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded font-semibold hover:bg-green-700 transition-colors"
+                  className="w-full px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
                 >
                   Save Configuration
                 </button>
@@ -461,115 +460,115 @@ const RSUESPPCalculator = () => {
             )}
           </div>
 
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h2 className="text-xl font-semibold mb-4 text-blue-900">Stock Parameters</h2>
+          <div className="bg-blue-50 dark:bg-gray-800 p-4 rounded-lg">
+            <h2 className="text-xl font-semibold mb-4 text-blue-900 dark:text-white">Stock Parameters</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Projection Years</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Projection Years</label>
                 <input
                   type="number"
                   min="1"
                   max="20"
                   value={params.projectionYears}
                   onChange={(e) => setParams({...params, projectionYears: Number(e.target.value)})}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Current Stock Price ($)</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Current Stock Price ($)</label>
                 <input
                   type="number"
                   value={params.currentStockPrice}
                   onChange={(e) => setParams({...params, currentStockPrice: Number(e.target.value)})}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Annual Stock Growth (%)</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Annual Stock Growth (%)</label>
                 <input
                   type="number"
                   value={params.annualStockGrowth}
                   onChange={(e) => setParams({...params, annualStockGrowth: Number(e.target.value)})}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
             </div>
           </div>
 
-          <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
-            <h2 className="text-xl font-semibold text-purple-900 mb-3">Currency Display</h2>
+          <div className="bg-purple-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-purple-200 dark:border-purple-600">
+            <h2 className="text-xl font-semibold text-purple-900 dark:text-white mb-3">Currency Display</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">USD to GBP Rate:</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">USD to GBP Rate:</label>
                 <input
                   type="number"
                   step="0.01"
                   value={params.usdToGbp}
                   onChange={(e) => setParams({...params, usdToGbp: Number(e.target.value)})}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
               <button
                 onClick={() => setShowGbp(!showGbp)}
                 className={`w-full px-4 py-2 rounded font-semibold transition-colors ${
                   showGbp
-                    ? 'bg-purple-600 text-white hover:bg-purple-700'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-purple-600 dark:bg-purple-500 text-white hover:bg-purple-700 dark:hover:bg-purple-600'
+                    : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
                 }`}
               >
                 {showGbp ? 'Show USD' : 'Show GBP'}
               </button>
-              <div className="text-sm text-purple-700">
+              <div className="text-sm text-purple-700 dark:text-purple-400">
                 Currently displaying: <span className="font-bold">{showGbp ? 'GBP (£)' : 'USD ($)'}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-orange-50 p-4 rounded-lg">
-            <h2 className="text-xl font-semibold mb-4 text-orange-900">UK Tax Rates</h2>
+          <div className="bg-orange-50 dark:bg-gray-800 p-4 rounded-lg">
+            <h2 className="text-xl font-semibold mb-4 text-orange-900 dark:text-white">UK Tax Rates</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Income Tax Rate (%)</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Income Tax Rate (%)</label>
                 <input
                   type="number"
                   value={params.incomeTaxRate}
                   onChange={(e) => setParams({...params, incomeTaxRate: Number(e.target.value)})}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">National Insurance (%)</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">National Insurance (%)</label>
                 <input
                   type="number"
                   value={params.niRate}
                   onChange={(e) => setParams({...params, niRate: Number(e.target.value)})}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">CGT Rate (%)</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">CGT Rate (%)</label>
                 <input
                   type="number"
                   value={params.cgtRate}
                   onChange={(e) => setParams({...params, cgtRate: Number(e.target.value)})}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">CGT Allowance (£)</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">CGT Allowance (£)</label>
                 <input
                   type="number"
                   value={params.cgtAllowance}
                   onChange={(e) => setParams({...params, cgtAllowance: Number(e.target.value)})}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
             </div>
           </div>
 
-          <div className="bg-yellow-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-lg mb-2">Key Assumptions</h3>
-            <ul className="list-disc list-outside ml-5 space-y-1 text-sm text-left">
+          <div className="bg-yellow-50 dark:bg-gray-800 p-4 rounded-lg">
+            <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">Key Assumptions</h3>
+            <ul className="list-disc list-outside ml-5 space-y-1 text-sm text-left text-gray-700 dark:text-gray-300">
               <li>Sell-to-cover for taxes: Income tax ({params.incomeTaxRate}%) + NI ({params.niRate}%) on RSU vesting</li>
               <li>No shares sold except for tax coverage</li>
               <li>All values in USD except ESPP contributions (£)</li>
@@ -580,7 +579,7 @@ const RSUESPPCalculator = () => {
         {/* Right side - Charts and table */}
         <div className="flex-1 space-y-8">
           <div>
-            <h2 className="text-2xl font-semibold mb-4">Total Shares Projection</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Total Shares Projection</h2>
             <ResponsiveContainer width="100%" height={400}>
               <LineChart data={calculations}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -596,7 +595,7 @@ const RSUESPPCalculator = () => {
           </div>
 
           <div>
-            <h2 className="text-2xl font-semibold mb-4">Portfolio Value Projection</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Portfolio Value Projection</h2>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={calculations}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -614,39 +613,39 @@ const RSUESPPCalculator = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <h2 className="text-2xl font-semibold mb-4">Detailed Year-by-Year Breakdown</h2>
-            <table className="w-full border-collapse border border-gray-300">
-              <thead className="bg-gray-100">
+            <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Detailed Year-by-Year Breakdown</h2>
+            <table className="w-full border-collapse border border-gray-300 dark:border-gray-600">
+              <thead className="bg-gray-100 dark:bg-gray-700">
                 <tr>
-                  <th className="border border-gray-300 p-2">Year</th>
-                  <th className="border border-gray-300 p-2">Stock Price</th>
-                  <th className="border border-gray-300 p-2">RSU Shares</th>
-                  <th className="border border-gray-300 p-2">ESPP Shares</th>
-                  <th className="border border-gray-300 p-2">Total Shares</th>
-                  <th className="border border-gray-300 p-2">Total Value</th>
-                  <th className="border border-gray-300 p-2">Capital Gain (£)</th>
-                  <th className="border border-gray-300 p-2">CGT Tax (£)</th>
-                  <th className="border border-gray-300 p-2">Net After CGT (£)</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Year</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Stock Price</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">RSU Shares</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">ESPP Shares</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Total Shares</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Total Value</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Capital Gain (£)</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">CGT Tax (£)</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Net After CGT (£)</th>
                 </tr>
               </thead>
               <tbody>
                 {calculations.map((row) => (
-                  <tr key={row.year} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 p-2 text-center font-semibold">{row.year}</td>
-                    <td className="border border-gray-300 p-2 text-right">${row.stockPrice}</td>
-                    <td className="border border-gray-300 p-2 text-right">{row.rsuShares.toLocaleString()}</td>
-                    <td className="border border-gray-300 p-2 text-right">{row.esppShares.toLocaleString()}</td>
-                    <td className="border border-gray-300 p-2 text-right font-semibold">{row.totalShares.toLocaleString()}</td>
-                    <td className="border border-gray-300 p-2 text-right font-bold text-blue-700">
+                  <tr key={row.year} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-center font-semibold text-gray-900 dark:text-white">{row.year}</td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">${row.stockPrice}</td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">{row.rsuShares.toLocaleString()}</td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">{row.esppShares.toLocaleString()}</td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-semibold text-gray-900 dark:text-white">{row.totalShares.toLocaleString()}</td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-bold text-blue-700 dark:text-blue-400">
                       {showGbp ? `£${row.totalValueGbp.toLocaleString()}` : `${row.totalValue.toLocaleString()}`}
                     </td>
-                    <td className="border border-gray-300 p-2 text-right">
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">
                       £{row.capitalGainGbp.toLocaleString()}
                     </td>
-                    <td className="border border-gray-300 p-2 text-right text-red-600">
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-red-600 dark:text-red-400">
                       £{row.cgtTax.toLocaleString()}
                     </td>
-                    <td className="border border-gray-300 p-2 text-right font-bold text-green-700">
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-bold text-green-700 dark:text-green-400">
                       £{row.netProceedsAfterCgt.toLocaleString()}
                     </td>
                   </tr>

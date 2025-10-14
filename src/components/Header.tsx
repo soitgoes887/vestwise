@@ -7,7 +7,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
   return (
-    <header className="bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg">
+    <header className="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-800 dark:to-purple-800 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo and Brand */}
@@ -59,7 +59,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
               <h1 className="text-2xl font-bold text-white tracking-tight">
                 Vestwise
               </h1>
-              <p className="text-xs text-indigo-100">Smart Equity Planning</p>
+              <p className="text-xs text-indigo-100 dark:text-indigo-200">Smart Equity Planning</p>
             </div>
           </div>
 
@@ -70,7 +70,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
               className={`text-sm font-medium transition-colors ${
                 currentPage === 'home'
                   ? 'text-white border-b-2 border-white pb-1'
-                  : 'text-indigo-100 hover:text-white'
+                  : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
               }`}
             >
               Home
@@ -80,7 +80,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
               className={`text-sm font-medium transition-colors ${
                 currentPage === 'calculator'
                   ? 'text-white border-b-2 border-white pb-1'
-                  : 'text-indigo-100 hover:text-white'
+                  : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
               }`}
             >
               Calculator
@@ -90,7 +90,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
               className={`text-sm font-medium transition-colors ${
                 currentPage === 'about'
                   ? 'text-white border-b-2 border-white pb-1'
-                  : 'text-indigo-100 hover:text-white'
+                  : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
               }`}
             >
               About
@@ -100,7 +100,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
               className={`text-sm font-medium transition-colors ${
                 currentPage === 'contact'
                   ? 'text-white border-b-2 border-white pb-1'
-                  : 'text-indigo-100 hover:text-white'
+                  : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
               }`}
             >
               Contact
