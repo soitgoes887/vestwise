@@ -1,6 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const Contact: React.FC = () => {
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setStatus('submitting');
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    try {
+      const response = await fetch('https://formspree.io/f/movkpoab', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        setStatus('success');
+        form.reset();
+        setTimeout(() => setStatus('idle'), 5000);
+      } else {
+        setStatus('error');
+      }
+    } catch (error) {
+      setStatus('error');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -43,7 +73,20 @@ const Contact: React.FC = () => {
           <h2 className="text-2xl font-semibold text-indigo-900 dark:text-indigo-400 mb-4 text-center">
             Quick Contact Form
           </h2>
-          <form className="space-y-4">
+
+          {status === 'success' && (
+            <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 rounded">
+              ✓ Message sent successfully! We'll get back to you soon.
+            </div>
+          )}
+
+          {status === 'error' && (
+            <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 rounded">
+              ✗ Failed to send message. Please try again or email us directly.
+            </div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Name
@@ -52,6 +95,7 @@ const Contact: React.FC = () => {
                 type="text"
                 id="name"
                 name="name"
+                required
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="Your name"
               />
@@ -65,6 +109,7 @@ const Contact: React.FC = () => {
                 type="email"
                 id="email"
                 name="email"
+                required
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="your.email@example.com"
               />
@@ -95,6 +140,7 @@ const Contact: React.FC = () => {
                 id="message"
                 name="message"
                 rows={6}
+                required
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="Tell us what's on your mind..."
               />
@@ -102,15 +148,12 @@ const Contact: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
+              disabled={status === 'submitting'}
+              className="w-full bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Send Message
+              {status === 'submitting' ? 'Sending...' : 'Send Message'}
             </button>
           </form>
-
-          <p className="text-sm text-gray-600 dark:text-gray-400 text-center mt-4">
-            Note: This form is currently for demonstration purposes. Please use the email address above.
-          </p>
         </div>
       </div>
     </div>
