@@ -150,7 +150,8 @@ const RSUESPPCalculator = () => {
       totalValueGbp: number;
       capitalGainGbp: number;
       cgtTax: number;
-      netProceedsAfterCgt: number;
+      netProceedsAfterCgtGbp: number;
+      netProceedsAfterCgtUsd: number;
       stockPrice: number;
       esppInvested: number;
       totalTaxesPaid: number;
@@ -171,12 +172,17 @@ const RSUESPPCalculator = () => {
       const vestStart = new Date(grant.vestStartDate);
       const { periods, intervalMonths } = getVestingScheduleDetails(grant.vestingSchedule);
 
+      const baseShares = Math.floor(grant.totalShares / periods);
+      const remainder = grant.totalShares - (baseShares * periods);
+
       for (let i = 0; i < periods; i++) {
         const vestDate = new Date(vestStart);
         vestDate.setMonth(vestDate.getMonth() + i * intervalMonths);
+        // Distribute remainder shares to the first few periods
+        const shares = i < remainder ? baseShares + 1 : baseShares;
         vestingSchedule.push({
           date: vestDate,
-          shares: Math.floor(grant.totalShares / periods),
+          shares: shares,
           grant: `grant_${grant.id}`
         });
       }
@@ -250,7 +256,8 @@ const RSUESPPCalculator = () => {
       const capitalGainGbp = capitalGain / params.usdToGbp;
       const taxableGain = Math.max(0, capitalGainGbp - params.cgtAllowance);
       const cgtTax = taxableGain * (params.cgtRate / 100);
-      const netProceedsAfterCgt = (totalValue / params.usdToGbp) - cgtTax;
+      const netProceedsAfterCgtGbp = (totalValue / params.usdToGbp) - cgtTax;
+      const netProceedsAfterCgtUsd = totalValue - (cgtTax * params.usdToGbp);
       
       results.push({
         year,
@@ -265,7 +272,8 @@ const RSUESPPCalculator = () => {
         totalValueGbp: Math.round(totalValue / params.usdToGbp),
         capitalGainGbp: Math.round(capitalGainGbp),
         cgtTax: Math.round(cgtTax),
-        netProceedsAfterCgt: Math.round(netProceedsAfterCgt),
+        netProceedsAfterCgtGbp: Math.round(netProceedsAfterCgtGbp),
+        netProceedsAfterCgtUsd: Math.round(netProceedsAfterCgtUsd),
         stockPrice: Math.round(currentStockPrice * 100) / 100,
         esppInvested: Math.round(esppInvested),
         totalTaxesPaid: Math.round(totalTaxesPaid)
@@ -634,7 +642,7 @@ const RSUESPPCalculator = () => {
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Total Value</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Capital Gain (£)</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">CGT Tax (£)</th>
-                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Net After CGT (£)</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Net After CGT</th>
                 </tr>
               </thead>
               <tbody>
@@ -655,7 +663,7 @@ const RSUESPPCalculator = () => {
                       £{row.cgtTax.toLocaleString()}
                     </td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-bold text-green-700 dark:text-green-400">
-                      £{row.netProceedsAfterCgt.toLocaleString()}
+                      {showGbp ? `£${row.netProceedsAfterCgtGbp.toLocaleString()}` : `$${row.netProceedsAfterCgtUsd.toLocaleString()}`}
                     </td>
                   </tr>
                 ))}
