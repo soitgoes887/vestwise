@@ -215,6 +215,8 @@ const RSUESPPCalculator = () => {
       
       let esppShares = 0;
       let esppInvested = 0;
+      let esppMarketValueAtPurchase = 0; // Track market value for CGT cost basis
+      let esppDiscountTaxPaid = 0; // Track income tax on discount
 
       if (esppConfig.enabled) {
         const monthsInYear = year * 12;
@@ -234,11 +236,20 @@ const RSUESPPCalculator = () => {
           const stockPriceAtPeriodStart = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, periodStartMonth / 12);
           const stockPriceAtPeriodEnd = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, periodEndMonth / 12);
 
-          const purchasePrice = Math.min(stockPriceAtPeriodStart, stockPriceAtPeriodEnd) * (1 - esppConfig.discount / 100);
+          const marketPrice = Math.min(stockPriceAtPeriodStart, stockPriceAtPeriodEnd);
+          const purchasePrice = marketPrice * (1 - esppConfig.discount / 100);
           const sharesPurchased = periodContribution / purchasePrice;
+
+          // UK Tax: Discount is taxed as employment income at purchase
+          const discountValueUsd = sharesPurchased * (marketPrice - purchasePrice);
+          const incomeTaxOnDiscount = discountValueUsd * (params.incomeTaxRate / 100);
+          const niOnDiscount = discountValueUsd * (params.niRate / 100);
 
           esppShares += sharesPurchased;
           esppInvested += periodContribution;
+          esppMarketValueAtPurchase += sharesPurchased * marketPrice;
+          esppDiscountTaxPaid += incomeTaxOnDiscount + niOnDiscount;
+          totalTaxesPaid += incomeTaxOnDiscount + niOnDiscount;
         }
       }
       
@@ -249,11 +260,11 @@ const RSUESPPCalculator = () => {
       const esppValue = esppShares * currentStockPrice;
       
       // Calculate capital gains if selling all shares
-      // RSUs: cost basis is the value at vesting (already taxed as income, so no gain on RSUs)
-      // ESPP: cost basis is the purchase price (includes discount)
-      const esppCostBasis = esppInvested / params.usdToGbp; // Convert GBP to USD
-      const capitalGain = Math.max(0, esppValue - esppCostBasis);
-      const capitalGainGbp = capitalGain / params.usdToGbp;
+      // RSUs: No capital gain - cost basis equals market value at vesting (already taxed as income)
+      // ESPP: Cost basis is market value at purchase (discount already taxed as income)
+      const esppCostBasisUsd = esppMarketValueAtPurchase;
+      const capitalGainUsd = Math.max(0, esppValue - esppCostBasisUsd);
+      const capitalGainGbp = capitalGainUsd / params.usdToGbp;
       const taxableGain = Math.max(0, capitalGainGbp - params.cgtAllowance);
       const cgtTax = taxableGain * (params.cgtRate / 100);
       const netProceedsAfterCgtGbp = (totalValue / params.usdToGbp) - cgtTax;
@@ -582,9 +593,9 @@ const RSUESPPCalculator = () => {
           <div className="bg-yellow-50 dark:bg-gray-800 p-4 rounded-lg">
             <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">Key Assumptions</h3>
             <ul className="list-disc list-outside ml-5 space-y-1 text-sm text-left text-gray-700 dark:text-gray-300">
-              <li>Sell-to-cover for taxes: Income tax ({params.incomeTaxRate}%) + NI ({params.niRate}%) on RSU vesting</li>
-              <li>No shares sold except for tax coverage</li>
-              <li>All values in USD except ESPP contributions (£)</li>
+              <li><strong>RSUs:</strong> Income tax ({params.incomeTaxRate}%) + NI ({params.niRate}%) at vesting, sell-to-cover</li>
+              <li><strong>ESPP:</strong> Discount taxed as income ({params.incomeTaxRate}% + {params.niRate}% NI) at purchase</li>
+              <li><strong>CGT:</strong> Cost basis = market value at acquisition (vesting for RSUs, purchase for ESPP)</li>
             </ul>
           </div>
         </div>
