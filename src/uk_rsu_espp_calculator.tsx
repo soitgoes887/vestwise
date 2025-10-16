@@ -29,7 +29,11 @@ const RSUESPPCalculator = () => {
     usdToGbp: 1.3,
     cgtRate: 24,
     cgtAllowance: 3000,
-    projectionYears: 7
+    projectionYears: 7,
+    useOwnISA: false,
+    useSpouseISA: false,
+    ownISAAllowance: 20000,
+    spouseISAAllowance: 20000
   });
 
   const [showGbp, setShowGbp] = useState(false);
@@ -167,6 +171,9 @@ const RSUESPPCalculator = () => {
 
     const vestingSchedule: VestingEntry[] = [];
 
+    // Track cumulative ISA contributions
+    let cumulativeISAValueGbp = 0;
+
     // Add vesting schedules for user-defined RSU grants
     rsuGrants.forEach((grant) => {
       const vestStart = new Date(grant.vestStartDate);
@@ -258,14 +265,31 @@ const RSUESPPCalculator = () => {
       const totalValue = totalShares * currentStockPrice;
       const rsuValue = rsuSharesVested * currentStockPrice;
       const esppValue = esppShares * currentStockPrice;
-      
+
+      // Calculate annual ISA contributions
+      let annualISAAllowance = 0;
+      if (params.useOwnISA) annualISAAllowance += params.ownISAAllowance;
+      if (params.useSpouseISA) annualISAAllowance += params.spouseISAAllowance;
+
+      // Add ISA contribution for this year (transfer shares worth up to allowance)
+      const totalValueGbp = totalValue / params.usdToGbp;
+      const isaContributionThisYear = Math.min(annualISAAllowance, Math.max(0, totalValueGbp - cumulativeISAValueGbp));
+      cumulativeISAValueGbp += isaContributionThisYear;
+
       // Calculate capital gains if selling all shares
-      // RSUs: No capital gain - cost basis equals market value at vesting (already taxed as income)
+      // RSUs: No capital gain from vesting - cost basis equals market value at vesting (already taxed as income)
       // ESPP: Cost basis is market value at purchase (discount already taxed as income)
       const esppCostBasisUsd = esppMarketValueAtPurchase;
       const capitalGainUsd = Math.max(0, esppValue - esppCostBasisUsd);
       const capitalGainGbp = capitalGainUsd / params.usdToGbp;
-      const taxableGain = Math.max(0, capitalGainGbp - params.cgtAllowance);
+
+      // Apply ISA protection: ISA-protected shares have no CGT
+      // Assume ISA is filled proportionally with all shares (RSU + ESPP)
+      const isaProtectedRatio = totalValueGbp > 0 ? cumulativeISAValueGbp / totalValueGbp : 0;
+      const isaProtectedGain = capitalGainGbp * Math.min(1, isaProtectedRatio);
+      const nonISACapitalGain = Math.max(0, capitalGainGbp - isaProtectedGain);
+
+      const taxableGain = Math.max(0, nonISACapitalGain - params.cgtAllowance);
       const cgtTax = taxableGain * (params.cgtRate / 100);
       const netProceedsAfterCgtGbp = (totalValue / params.usdToGbp) - cgtTax;
       const netProceedsAfterCgtUsd = totalValue - (cgtTax * params.usdToGbp);
@@ -587,6 +611,43 @@ const RSUESPPCalculator = () => {
                   className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
+              <div className="pt-3 border-t border-orange-200 dark:border-orange-700">
+                <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">ISA Protection (£/year)</label>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={params.useOwnISA}
+                      onChange={(e) => setParams({...params, useOwnISA: e.target.checked})}
+                      className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                    />
+                    <input
+                      type="number"
+                      value={params.ownISAAllowance}
+                      onChange={(e) => setParams({...params, ownISAAllowance: Number(e.target.value)})}
+                      disabled={!params.useOwnISA}
+                      className="w-24 p-1 text-sm border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 disabled:opacity-50"
+                    />
+                    <span className="text-sm text-gray-900 dark:text-white">Own S&S ISA</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={params.useSpouseISA}
+                      onChange={(e) => setParams({...params, useSpouseISA: e.target.checked})}
+                      className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                    />
+                    <input
+                      type="number"
+                      value={params.spouseISAAllowance}
+                      onChange={(e) => setParams({...params, spouseISAAllowance: Number(e.target.value)})}
+                      disabled={!params.useSpouseISA}
+                      className="w-24 p-1 text-sm border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 disabled:opacity-50"
+                    />
+                    <span className="text-sm text-gray-900 dark:text-white">Spouse S&S ISA</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -596,6 +657,13 @@ const RSUESPPCalculator = () => {
               <li><strong>RSUs:</strong> Income tax ({params.incomeTaxRate}%) + NI ({params.niRate}%) at vesting, sell-to-cover</li>
               <li><strong>ESPP:</strong> Discount taxed as income ({params.incomeTaxRate}% + {params.niRate}% NI) at purchase</li>
               <li><strong>CGT:</strong> Cost basis = market value at acquisition (vesting for RSUs, purchase for ESPP)</li>
+              {(params.useOwnISA || params.useSpouseISA) && (
+                <li><strong>ISA Protection:</strong> Shares in S&S ISAs are CGT-free. Use "Bed and ISA" to transfer. Annual limits:
+                  {params.useOwnISA && ` Own £${params.ownISAAllowance.toLocaleString()}`}
+                  {params.useOwnISA && params.useSpouseISA && ','}
+                  {params.useSpouseISA && ` Spouse £${params.spouseISAAllowance.toLocaleString()}`}
+                </li>
+              )}
             </ul>
           </div>
         </div>
