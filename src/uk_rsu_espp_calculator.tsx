@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { saveConfig, loadConfig, generateReadableUUID } from './services/configService';
+import { fetchUsdToGbpRateECB, ExchangeRateData } from './services/exchangeRateService';
+import { fetchStockPrice, US_COMPANIES_IN_UK, Company, StockPriceData } from './services/stockPriceService';
 
 const RSUESPPCalculator = () => {
   // Format large numbers to k/M format (e.g., 100000 -> 100k)
@@ -69,6 +71,95 @@ const RSUESPPCalculator = () => {
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
   const [loadStatus, setLoadStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
   const [showSaveLoad, setShowSaveLoad] = useState(false);
+
+  // Exchange rate state
+  const [exchangeRateData, setExchangeRateData] = useState<ExchangeRateData | null>(null);
+  const [loadingRate, setLoadingRate] = useState(false);
+  const [rateError, setRateError] = useState<string | null>(null);
+
+  // Stock price state
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [stockPriceData, setStockPriceData] = useState<StockPriceData | null>(null);
+  const [loadingStockPrice, setLoadingStockPrice] = useState(false);
+  const [stockPriceError, setStockPriceError] = useState<string | null>(null);
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
+
+  // Fetch exchange rate on component mount
+  useEffect(() => {
+    fetchExchangeRate();
+  }, []);
+
+  const fetchExchangeRate = async () => {
+    setLoadingRate(true);
+    setRateError(null);
+    try {
+      const data = await fetchUsdToGbpRateECB();
+      setExchangeRateData(data);
+      // Update the USD to GBP parameter with the fetched rate
+      setParams(prev => ({ ...prev, usdToGbp: data.rate }));
+    } catch (error) {
+      setRateError('Failed to fetch exchange rate');
+      console.error('Exchange rate error:', error);
+    } finally {
+      setLoadingRate(false);
+    }
+  };
+
+  const formatLastUpdated = (date: Date) => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  };
+
+  const handleCompanySelect = async (company: Company) => {
+    setSelectedCompany(company);
+    setShowCompanyDropdown(false);
+    setCompanySearchQuery('');
+
+    // Fetch stock price
+    setLoadingStockPrice(true);
+    setStockPriceError(null);
+    try {
+      const priceData = await fetchStockPrice(company.ticker);
+      setStockPriceData(priceData);
+      setParams(prev => ({ ...prev, currentStockPrice: priceData.price }));
+    } catch (error) {
+      setStockPriceError('Failed to fetch stock price');
+      console.error('Stock price error:', error);
+    } finally {
+      setLoadingStockPrice(false);
+    }
+  };
+
+  const refreshStockPrice = async () => {
+    if (!selectedCompany) return;
+
+    setLoadingStockPrice(true);
+    setStockPriceError(null);
+    try {
+      const priceData = await fetchStockPrice(selectedCompany.ticker);
+      setStockPriceData(priceData);
+      setParams(prev => ({ ...prev, currentStockPrice: priceData.price }));
+    } catch (error) {
+      setStockPriceError('Failed to fetch stock price');
+      console.error('Stock price error:', error);
+    } finally {
+      setLoadingStockPrice(false);
+    }
+  };
+
+  const filteredCompanies = US_COMPANIES_IN_UK.filter(company =>
+    company.name.toLowerCase().includes(companySearchQuery.toLowerCase()) ||
+    company.ticker.toLowerCase().includes(companySearchQuery.toLowerCase())
+  );
 
   const handleAddGrant = () => {
     if (newGrant.grantDate && newGrant.vestStartDate && newGrant.totalShares && newGrant.grantPrice) {
@@ -548,6 +639,88 @@ const RSUESPPCalculator = () => {
             <h2 className="text-xl font-semibold mb-4 text-blue-900 dark:text-white">Stock Parameters</h2>
             <div className="space-y-3">
               <div>
+                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Select Company (Optional)</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={selectedCompany?.name || companySearchQuery}
+                    onChange={(e) => {
+                      setCompanySearchQuery(e.target.value);
+                      setShowCompanyDropdown(true);
+                    }}
+                    onFocus={() => setShowCompanyDropdown(true)}
+                    placeholder="Search for a company..."
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  />
+                  {showCompanyDropdown && filteredCompanies.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {filteredCompanies.map((company) => (
+                        <button
+                          key={company.ticker}
+                          onClick={() => handleCompanySelect(company)}
+                          className="w-full text-left px-3 py-2 hover:bg-blue-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white"
+                        >
+                          <div className="font-medium">{company.name}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{company.ticker} · {company.exchange}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {selectedCompany && (
+                  <div className="mt-1 text-xs text-blue-700 dark:text-blue-400 flex items-center justify-between">
+                    <span>{selectedCompany.ticker} · {selectedCompany.exchange}</span>
+                    <button
+                      onClick={() => {
+                        setSelectedCompany(null);
+                        setStockPriceData(null);
+                        setCompanySearchQuery('');
+                      }}
+                      className="text-red-600 dark:text-red-400 hover:underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white">Current Stock Price ($)</label>
+                  {selectedCompany && (
+                    <button
+                      onClick={refreshStockPrice}
+                      disabled={loadingStockPrice}
+                      className="text-xs px-2 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loadingStockPrice ? 'Loading...' : '🔄 Refresh'}
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="number"
+                  value={params.currentStockPrice}
+                  onChange={(e) => setParams({...params, currentStockPrice: Number(e.target.value)})}
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                />
+                {stockPriceData && !stockPriceError && (
+                  <div className="mt-1 space-y-1">
+                    <div className="text-xs text-blue-700 dark:text-blue-400">
+                      Change: <span className={stockPriceData.change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        {stockPriceData.change >= 0 ? '+' : ''}{stockPriceData.change.toFixed(2)} ({stockPriceData.changePercent >= 0 ? '+' : ''}{stockPriceData.changePercent.toFixed(2)}%)
+                      </span>
+                    </div>
+                    <div className="text-xs text-blue-700 dark:text-blue-400">
+                      Updated: {formatLastUpdated(stockPriceData.lastUpdated)}
+                    </div>
+                  </div>
+                )}
+                {stockPriceError && (
+                  <div className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {stockPriceError}
+                  </div>
+                )}
+              </div>
+              <div>
                 <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Projection Years</label>
                 <input
                   type="number"
@@ -555,15 +728,6 @@ const RSUESPPCalculator = () => {
                   max="20"
                   value={params.projectionYears}
                   onChange={(e) => setParams({...params, projectionYears: Number(e.target.value)})}
-                  className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Current Stock Price ($)</label>
-                <input
-                  type="number"
-                  value={params.currentStockPrice}
-                  onChange={(e) => setParams({...params, currentStockPrice: Number(e.target.value)})}
                   className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
@@ -583,7 +747,16 @@ const RSUESPPCalculator = () => {
             <h2 className="text-xl font-semibold text-purple-900 dark:text-white mb-3">Currency Display</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">USD to GBP Rate:</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white">GBP to USD Rate:</label>
+                  <button
+                    onClick={fetchExchangeRate}
+                    disabled={loadingRate}
+                    className="text-xs px-2 py-1 bg-purple-600 dark:bg-purple-500 text-white rounded hover:bg-purple-700 dark:hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loadingRate ? 'Loading...' : '🔄 Refresh'}
+                  </button>
+                </div>
                 <input
                   type="number"
                   step="0.01"
@@ -591,6 +764,16 @@ const RSUESPPCalculator = () => {
                   onChange={(e) => setParams({...params, usdToGbp: Number(e.target.value)})}
                   className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
+                {exchangeRateData && !rateError && (
+                  <div className="mt-1 text-xs text-purple-700 dark:text-purple-400">
+                    Last updated: {formatLastUpdated(exchangeRateData.lastUpdated)}
+                  </div>
+                )}
+                {rateError && (
+                  <div className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {rateError} - using manual rate
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => setShowGbp(!showGbp)}
