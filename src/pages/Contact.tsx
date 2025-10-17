@@ -45,10 +45,10 @@ const Contact: React.FC = () => {
             <div className="border-l-4 border-indigo-600 dark:border-indigo-400 pl-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Email</h3>
               <a
-                href="mailto:hello@vestwise.com"
+                href="mailto:hello@vestwise.co.uk"
                 className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
               >
-                hello@vestwise.com
+                hello@vestwise.co.uk
               </a>
             </div>
 

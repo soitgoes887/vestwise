@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { saveConfig, loadConfig, generateReadableUUID } from './services/configService';
 
 const RSUESPPCalculator = () => {
   // Format large numbers to k/M format (e.g., 100000 -> 100k)
@@ -62,6 +63,13 @@ const RSUESPPCalculator = () => {
     purchasePeriod: '6'
   });
 
+  // Save/Load configuration state
+  const [configUuid, setConfigUuid] = useState('');
+  const [loadUuid, setLoadUuid] = useState('');
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
+  const [loadStatus, setLoadStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
+  const [showSaveLoad, setShowSaveLoad] = useState(false);
+
   const handleAddGrant = () => {
     if (newGrant.grantDate && newGrant.vestStartDate && newGrant.totalShares && newGrant.grantPrice) {
       setRsuGrants([...rsuGrants, {
@@ -97,6 +105,34 @@ const RSUESPPCalculator = () => {
       ...esppConfig,
       enabled: false
     });
+  };
+
+  const handleSaveConfiguration = async () => {
+    try {
+      const uuid = configUuid || generateReadableUUID();
+      const config = { rsuGrants, esppConfig, params };
+
+      await saveConfig(uuid, config);
+      setConfigUuid(uuid);
+      setSaveStatus({ type: 'success', message: `Saved! Your ID: ${uuid}` });
+      setTimeout(() => setSaveStatus({ type: null, message: '' }), 5000);
+    } catch (error) {
+      setSaveStatus({ type: 'error', message: 'Failed to save configuration' });
+    }
+  };
+
+  const handleLoadConfiguration = async () => {
+    try {
+      const config = await loadConfig(loadUuid);
+      setRsuGrants(config.rsuGrants || []);
+      setEsppConfig(config.esppConfig || esppConfig);
+      setParams(config.params || params);
+      setConfigUuid(loadUuid);
+      setLoadStatus({ type: 'success', message: 'Configuration loaded!' });
+      setTimeout(() => setLoadStatus({ type: null, message: '' }), 3000);
+    } catch (error) {
+      setLoadStatus({ type: 'error', message: 'Failed to load configuration' });
+    }
   };
 
   const getVestingScheduleDetails = (schedule: string) => {
@@ -665,6 +701,72 @@ const RSUESPPCalculator = () => {
                 </li>
               )}
             </ul>
+          </div>
+
+          <div className="bg-pink-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-pink-200 dark:border-pink-600">
+            <h2 className="text-xl font-semibold text-pink-900 dark:text-white mb-3">Save/Load Configuration</h2>
+
+            <button
+              onClick={() => setShowSaveLoad(!showSaveLoad)}
+              className="w-full px-4 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors"
+            >
+              {showSaveLoad ? 'Hide' : 'Save or Load Config'}
+            </button>
+
+            {showSaveLoad && (
+              <div className="mt-4 space-y-4 bg-white dark:bg-gray-700 p-3 rounded border border-pink-300 dark:border-pink-600">
+                <div>
+                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Save Configuration</h3>
+                  {configUuid && (
+                    <div className="mb-2 p-2 bg-blue-100 dark:bg-blue-900 rounded text-sm text-gray-900 dark:text-white">
+                      <strong>Current ID:</strong> {configUuid}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleSaveConfiguration}
+                    className="w-full px-4 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors"
+                  >
+                    {configUuid ? 'Update Configuration' : 'Save Configuration'}
+                  </button>
+                  {saveStatus.type && (
+                    <div className={`mt-2 p-2 rounded text-sm ${
+                      saveStatus.type === 'success'
+                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                    }`}>
+                      {saveStatus.message}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-pink-200 dark:border-pink-700">
+                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Load Configuration</h3>
+                  <input
+                    type="text"
+                    value={loadUuid}
+                    onChange={(e) => setLoadUuid(e.target.value)}
+                    placeholder="Enter your config ID"
+                    className="w-full p-2 border rounded mb-2 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  />
+                  <button
+                    onClick={handleLoadConfiguration}
+                    disabled={!loadUuid}
+                    className="w-full px-4 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Load Configuration
+                  </button>
+                  {loadStatus.type && (
+                    <div className={`mt-2 p-2 rounded text-sm ${
+                      loadStatus.type === 'success'
+                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                    }`}>
+                      {loadStatus.message}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
