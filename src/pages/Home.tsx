@@ -31,7 +31,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             <div className="text-3xl mb-3">📊</div>
             <h3 className="text-xl font-semibold mb-2 dark:text-white">RSU Tracking</h3>
             <p className="text-gray-600 dark:text-gray-300">
-              Add multiple RSU grants with flexible vesting schedules. Track your equity growth over time.
+              Add multiple Restricted Stock Unit grants with flexible vesting schedules. Track your equity growth over time.
             </p>
           </div>
 
