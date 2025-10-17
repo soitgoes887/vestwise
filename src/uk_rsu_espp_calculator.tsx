@@ -84,6 +84,7 @@ const RSUESPPCalculator = () => {
   const [stockPriceError, setStockPriceError] = useState<string | null>(null);
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
+  const [stockPriceInput, setStockPriceInput] = useState(params.currentStockPrice.toString());
 
   // Fetch exchange rate on component mount
   useEffect(() => {
@@ -131,6 +132,7 @@ const RSUESPPCalculator = () => {
       const priceData = await fetchStockPrice(company.ticker);
       setStockPriceData(priceData);
       setParams(prev => ({ ...prev, currentStockPrice: priceData.price }));
+      setStockPriceInput(priceData.price.toString());
     } catch (error) {
       setStockPriceError('Failed to fetch stock price');
       console.error('Stock price error:', error);
@@ -148,6 +150,7 @@ const RSUESPPCalculator = () => {
       const priceData = await fetchStockPrice(selectedCompany.ticker);
       setStockPriceData(priceData);
       setParams(prev => ({ ...prev, currentStockPrice: priceData.price }));
+      setStockPriceInput(priceData.price.toString());
     } catch (error) {
       setStockPriceError('Failed to fetch stock price');
       console.error('Stock price error:', error);
@@ -350,7 +353,6 @@ const RSUESPPCalculator = () => {
       let esppShares = 0;
       let esppInvested = 0;
       let esppMarketValueAtPurchase = 0; // Track market value for CGT cost basis
-      let esppDiscountTaxPaid = 0; // Track income tax on discount
 
       if (esppConfig.enabled) {
         const monthsInYear = year * 12;
@@ -382,7 +384,6 @@ const RSUESPPCalculator = () => {
           esppShares += sharesPurchased;
           esppInvested += periodContribution;
           esppMarketValueAtPurchase += sharesPurchased * marketPrice;
-          esppDiscountTaxPaid += incomeTaxOnDiscount + niOnDiscount;
           totalTaxesPaid += incomeTaxOnDiscount + niOnDiscount;
         }
       }
@@ -649,6 +650,10 @@ const RSUESPPCalculator = () => {
                       setShowCompanyDropdown(true);
                     }}
                     onFocus={() => setShowCompanyDropdown(true)}
+                    onBlur={() => {
+                      // Delay to allow click on dropdown items to register
+                      setTimeout(() => setShowCompanyDropdown(false), 200);
+                    }}
                     placeholder="Search for a company..."
                     className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                   />
@@ -698,8 +703,28 @@ const RSUESPPCalculator = () => {
                 </div>
                 <input
                   type="number"
-                  value={params.currentStockPrice}
-                  onChange={(e) => setParams({...params, currentStockPrice: Number(e.target.value)})}
+                  value={stockPriceInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setStockPriceInput(value);
+                    // Update params only if it's a valid number
+                    if (value !== '' && !isNaN(Number(value))) {
+                      setParams({...params, currentStockPrice: Number(value)});
+                    }
+                  }}
+                  onBlur={() => {
+                    // On blur, if empty, reset to previous value
+                    if (stockPriceInput === '' || isNaN(Number(stockPriceInput))) {
+                      setStockPriceInput(params.currentStockPrice.toString());
+                    } else {
+                      setParams({...params, currentStockPrice: Number(stockPriceInput)});
+                    }
+                  }}
+                  onFocus={(e) => {
+                    // Select all text when focused for easy replacement
+                    e.target.select();
+                  }}
+                  placeholder="Enter stock price"
                   className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
                 {stockPriceData && !stockPriceError && (
