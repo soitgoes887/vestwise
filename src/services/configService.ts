@@ -8,6 +8,12 @@ export interface SavedConfig {
   esppConfig: any;
   params: any;
   baseCurrency?: 'USD' | 'GBP';
+  selectedCompany?: {
+    name: string;
+    ticker: string;
+    exchange: string;
+    country: 'US' | 'UK';
+  } | null;
 }
 
 export async function saveConfig(uuid: string, config: SavedConfig): Promise<{ success: boolean; uuid: string }> {

@@ -217,7 +217,7 @@ const RSUESPPCalculator = () => {
   const handleSaveConfiguration = async () => {
     try {
       const uuid = configUuid || generateReadableUUID();
-      const config = { rsuGrants, esppConfig, params, baseCurrency };
+      const config = { rsuGrants, esppConfig, params, baseCurrency, selectedCompany };
 
       await saveConfig(uuid, config);
       setConfigUuid(uuid);
@@ -235,7 +235,28 @@ const RSUESPPCalculator = () => {
       setEsppConfig(config.esppConfig || esppConfig);
       setParams(config.params || params);
       setBaseCurrency(config.baseCurrency || 'USD');
+      setSelectedCompany(config.selectedCompany || null);
       setConfigUuid(loadUuid);
+
+      // Fetch fresh stock price if a company was saved
+      if (config.selectedCompany) {
+        setLoadingStockPrice(true);
+        setStockPriceError(null);
+        try {
+          const priceData = await fetchStockPrice(config.selectedCompany.ticker);
+          setStockPriceData(priceData);
+          // Round to 2 decimals for display and calculations
+          const roundedPrice = Math.round(priceData.price * 100) / 100;
+          setParams(prev => ({ ...(config.params || params), currentStockPrice: roundedPrice }));
+          setStockPriceInput(roundedPrice.toFixed(2));
+        } catch (error) {
+          setStockPriceError('Failed to fetch stock price');
+          console.error('Stock price error:', error);
+        } finally {
+          setLoadingStockPrice(false);
+        }
+      }
+
       setLoadStatus({ type: 'success', message: 'Configuration loaded!' });
       setTimeout(() => setLoadStatus({ type: null, message: '' }), 3000);
     } catch (error) {
