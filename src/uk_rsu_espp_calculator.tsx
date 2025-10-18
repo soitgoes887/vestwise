@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { saveConfig, loadConfig, generateReadableUUID } from './services/configService';
 import { fetchUsdToGbpRateECB, ExchangeRateData } from './services/exchangeRateService';
-import { fetchStockPrice, US_COMPANIES_IN_UK, Company, StockPriceData } from './services/stockPriceService';
+import { fetchStockPrice, COMPANIES, Company, StockPriceData } from './services/stockPriceService';
 
 const RSUESPPCalculator = () => {
   // Format large numbers to k/M format (e.g., 100000 -> 100k)
@@ -39,7 +39,7 @@ const RSUESPPCalculator = () => {
     spouseISAAllowance: 20000
   });
 
-  const [showGbp, setShowGbp] = useState(false);
+  const [baseCurrency, setBaseCurrency] = useState<'USD' | 'GBP'>('USD'); // Base currency for inputs
   const [rsuGrants, setRsuGrants] = useState<RSUGrant[]>([]);
   const [showAddGrant, setShowAddGrant] = useState(false);
   const [newGrant, setNewGrant] = useState({
@@ -129,6 +129,9 @@ const RSUESPPCalculator = () => {
     setShowCompanyDropdown(false);
     setCompanySearchQuery('');
 
+    // Auto-select currency based on company country
+    setBaseCurrency(company.country === 'UK' ? 'GBP' : 'USD');
+
     // Fetch stock price
     setLoadingStockPrice(true);
     setStockPriceError(null);
@@ -163,7 +166,7 @@ const RSUESPPCalculator = () => {
     }
   };
 
-  const filteredCompanies = US_COMPANIES_IN_UK.filter(company =>
+  const filteredCompanies = COMPANIES.filter(company =>
     company.name.toLowerCase().includes(companySearchQuery.toLowerCase()) ||
     company.ticker.toLowerCase().includes(companySearchQuery.toLowerCase())
   );
@@ -210,7 +213,7 @@ const RSUESPPCalculator = () => {
   const handleSaveConfiguration = async () => {
     try {
       const uuid = configUuid || generateReadableUUID();
-      const config = { rsuGrants, esppConfig, params };
+      const config = { rsuGrants, esppConfig, params, baseCurrency };
 
       await saveConfig(uuid, config);
       setConfigUuid(uuid);
@@ -227,6 +230,7 @@ const RSUESPPCalculator = () => {
       setRsuGrants(config.rsuGrants || []);
       setEsppConfig(config.esppConfig || esppConfig);
       setParams(config.params || params);
+      setBaseCurrency(config.baseCurrency || 'USD');
       setConfigUuid(loadUuid);
       setLoadStatus({ type: 'success', message: 'Configuration loaded!' });
       setTimeout(() => setLoadStatus({ type: null, message: '' }), 3000);
@@ -740,7 +744,7 @@ const RSUESPPCalculator = () => {
                           onClick={() => handleCompanySelect(company)}
                           className="w-full text-left px-3 py-2 hover:bg-blue-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white"
                         >
-                          <div className="font-medium">{company.name}</div>
+                          <div className="font-medium">{company.name} {company.country === 'UK' ? '🇬🇧' : '🇺🇸'}</div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">{company.ticker} · {company.exchange}</div>
                         </button>
                       ))}
@@ -749,7 +753,7 @@ const RSUESPPCalculator = () => {
                 </div>
                 {selectedCompany && (
                   <div className="mt-1 text-xs text-blue-700 dark:text-blue-400 flex items-center justify-between">
-                    <span>{selectedCompany.ticker} · {selectedCompany.exchange}</span>
+                    <span>{selectedCompany.country === 'UK' ? '🇬🇧' : '🇺🇸'} {selectedCompany.ticker} · {selectedCompany.exchange}</span>
                     <button
                       onClick={() => {
                         setSelectedCompany(null);
@@ -765,7 +769,7 @@ const RSUESPPCalculator = () => {
               </div>
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white">Current Stock Price ($)</label>
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white">Current Stock Price ({baseCurrency === 'USD' ? '$' : '£'})</label>
                   {selectedCompany && (
                     <button
                       onClick={refreshStockPrice}
@@ -844,11 +848,13 @@ const RSUESPPCalculator = () => {
           </div>
 
           <div className="bg-purple-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-purple-200 dark:border-purple-600">
-            <h2 className="text-xl font-semibold text-purple-900 dark:text-white mb-3">Currency Display</h2>
+            <h2 className="text-xl font-semibold text-purple-900 dark:text-white mb-3">Currency Settings</h2>
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white">GBP to USD Rate:</label>
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                    Exchange Rate (1 {baseCurrency === 'USD' ? 'GBP' : 'USD'} = ? {baseCurrency}):
+                  </label>
                   <button
                     onClick={fetchExchangeRate}
                     disabled={loadingRate}
@@ -876,17 +882,17 @@ const RSUESPPCalculator = () => {
                 )}
               </div>
               <button
-                onClick={() => setShowGbp(!showGbp)}
+                onClick={() => setBaseCurrency(baseCurrency === 'USD' ? 'GBP' : 'USD')}
                 className={`w-full px-4 py-2 rounded font-semibold transition-colors ${
-                  showGbp
+                  baseCurrency === 'GBP'
                     ? 'bg-purple-600 dark:bg-purple-500 text-white hover:bg-purple-700 dark:hover:bg-purple-600'
                     : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
                 }`}
               >
-                {showGbp ? 'Show USD' : 'Show GBP'}
+                {baseCurrency === 'GBP' ? 'Switch to USD ($)' : 'Switch to GBP (£)'}
               </button>
               <div className="text-sm text-purple-700 dark:text-purple-400">
-                Currently displaying: <span className="font-bold">{showGbp ? 'GBP (£)' : 'USD ($)'}</span>
+                Currently using: <span className="font-bold">{baseCurrency === 'GBP' ? 'GBP (£)' : 'USD ($)'}</span>
               </div>
             </div>
           </div>
@@ -973,9 +979,12 @@ const RSUESPPCalculator = () => {
           <div className="bg-yellow-50 dark:bg-gray-800 p-4 rounded-lg">
             <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">Key Assumptions</h3>
             <ul className="list-disc list-outside ml-5 space-y-1 text-sm text-left text-gray-700 dark:text-gray-300">
+              <li><strong>Stock Prices:</strong> Using {baseCurrency === 'USD' ? 'USD ($)' : 'GBP (£)'} for stock prices and RSU grant values</li>
+              <li><strong>ESPP Contributions:</strong> Always in GBP (£) as contributions come from UK salary</li>
               <li><strong>RSUs:</strong> Income tax ({params.incomeTaxRate}%) + NI ({params.niRate}%) at vesting, sell-to-cover</li>
               <li><strong>ESPP:</strong> Discount taxed as income ({params.incomeTaxRate}% + {params.niRate}% NI) at purchase</li>
               <li><strong>CGT:</strong> Cost basis = market value at acquisition (vesting for RSUs, purchase for ESPP)</li>
+              <li><strong>Tax Jurisdiction:</strong> UK tax rates applied. {baseCurrency === 'USD' ? 'Exchange rate converts USD stock prices to GBP for tax calculations.' : 'All values already in GBP.'}</li>
               {(params.useOwnISA || params.useSpouseISA) && (
                 <li><strong>ISA Protection:</strong> Shares in S&S ISAs are CGT-free. Use "Bed and ISA" to transfer. Annual limits:
                   {params.useOwnISA && ` Own £${params.ownISAAllowance.toLocaleString()}`}
@@ -1081,13 +1090,13 @@ const RSUESPPCalculator = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="displayYear" label={{ value: 'Year', position: 'insideBottom', offset: -5 }} />
                 <YAxis
-                  label={{ value: `Value (${showGbp ? '£' : '$'})`, angle: -90, position: 'insideLeft' }}
+                  label={{ value: `Value (${baseCurrency === 'USD' ? '$' : '£'})`, angle: -90, position: 'insideLeft' }}
                   tickFormatter={formatValue}
                 />
-                <Tooltip formatter={(value) => `${showGbp ? '£' : '$'}${value.toLocaleString()}`} />
+                <Tooltip formatter={(value) => `${baseCurrency === 'USD' ? '$' : '£'}${value.toLocaleString()}`} />
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                <Bar dataKey={showGbp ? "rsuValueGbp" : "rsuValue"} stackId="a" fill="#3b82f6" name="RSU Value" />
-                <Bar dataKey={showGbp ? "esppValueGbp" : "esppValue"} stackId="a" fill="#10b981" name="ESPP Value" />
+                <Bar dataKey={baseCurrency === 'USD' ? "rsuValue" : "rsuValueGbp"} stackId="a" fill="#3b82f6" name="RSU Value" />
+                <Bar dataKey={baseCurrency === 'USD' ? "esppValue" : "esppValueGbp"} stackId="a" fill="#10b981" name="ESPP Value" />
               </BarChart>
             </ResponsiveContainer>
             </div>
@@ -1118,7 +1127,7 @@ const RSUESPPCalculator = () => {
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">{row.esppShares.toLocaleString()}</td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-semibold text-gray-900 dark:text-white">{row.totalShares.toLocaleString()}</td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-bold text-blue-700 dark:text-blue-400">
-                      {showGbp ? `£${row.totalValueGbp.toLocaleString()}` : `$${row.totalValue.toLocaleString()}`}
+                      {baseCurrency === 'USD' ? `$${row.totalValue.toLocaleString()}` : `£${row.totalValueGbp.toLocaleString()}`}
                     </td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">
                       £{row.capitalGainGbp.toLocaleString()}
@@ -1127,7 +1136,7 @@ const RSUESPPCalculator = () => {
                       £{row.cgtTax.toLocaleString()}
                     </td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-bold text-green-700 dark:text-green-400">
-                      {showGbp ? `£${row.netProceedsAfterCgtGbp.toLocaleString()}` : `$${row.netProceedsAfterCgtUsd.toLocaleString()}`}
+                      {baseCurrency === 'USD' ? `$${row.netProceedsAfterCgtUsd.toLocaleString()}` : `£${row.netProceedsAfterCgtGbp.toLocaleString()}`}
                     </td>
                   </tr>
                 ))}

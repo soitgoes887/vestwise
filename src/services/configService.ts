@@ -7,6 +7,7 @@ export interface SavedConfig {
   rsuGrants: any[];
   esppConfig: any;
   params: any;
+  baseCurrency?: 'USD' | 'GBP';
 }
 
 export async function saveConfig(uuid: string, config: SavedConfig): Promise<{ success: boolean; uuid: string }> {

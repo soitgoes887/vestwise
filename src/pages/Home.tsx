@@ -15,7 +15,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
             Make informed decisions about your equity compensation.
-            Project your RSU and ESPP growth with UK tax calculations.
+            Project your RSU and ESPP growth with UK tax calculations for both US and UK companies.
           </p>
           <button
             onClick={() => onNavigate('calculator')}
@@ -39,7 +39,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             <div className="text-3xl mb-3">💰</div>
             <h3 className="text-xl font-semibold mb-2 dark:text-white">ESPP Planning</h3>
             <p className="text-gray-600 dark:text-gray-300">
-              Configure your Employee Stock Purchase Plan with discounts and contribution growth.
+              Configure your Employee Stock Purchase Plan with discounts and contribution growth. ESPP contributions always in £ (from UK salary).
             </p>
           </div>
 
@@ -47,7 +47,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             <div className="text-3xl mb-3">🇬🇧</div>
             <h3 className="text-xl font-semibold mb-2 dark:text-white">UK Tax Optimized</h3>
             <p className="text-gray-600 dark:text-gray-300">
-              Built specifically for UK employees with Income Tax, NI, and Capital Gains Tax calculations.
+              Built for UK employees. Supports both US and UK companies. Income Tax, NI, and CGT calculations included.
             </p>
           </div>
         </div>
@@ -80,8 +80,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             <div className="flex items-start">
               <span className="text-2xl mr-3">✓</span>
               <div>
-                <h4 className="font-semibold mb-1">Currency Conversion</h4>
-                <p className="text-indigo-100 dark:text-indigo-200">Toggle between USD and GBP with customizable exchange rates</p>
+                <h4 className="font-semibold mb-1">Dual Currency Support</h4>
+                <p className="text-indigo-100 dark:text-indigo-200">Stock prices in USD or GBP. ESPP contributions always in £ (from UK salary).</p>
               </div>
             </div>
           </div>

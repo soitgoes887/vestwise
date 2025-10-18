@@ -18,6 +18,7 @@ export interface Company {
   name: string;
   ticker: string;
   exchange: string;
+  country: 'US' | 'UK';
 }
 
 export interface RateLimitInfo {
@@ -73,44 +74,78 @@ export function resetRateLimitCounter() {
   return newInfo;
 }
 
-// Largest US employers in the UK
-export const US_COMPANIES_IN_UK: Company[] = [
-  { name: 'Apple', ticker: 'AAPL', exchange: 'NASDAQ' },
-  { name: 'Microsoft', ticker: 'MSFT', exchange: 'NASDAQ' },
-  { name: 'Amazon', ticker: 'AMZN', exchange: 'NASDAQ' },
-  { name: 'Google (Alphabet)', ticker: 'GOOGL', exchange: 'NASDAQ' },
-  { name: 'Meta (Facebook)', ticker: 'META', exchange: 'NASDAQ' },
-  { name: 'Netflix', ticker: 'NFLX', exchange: 'NASDAQ' },
-  { name: 'Tesla', ticker: 'TSLA', exchange: 'NASDAQ' },
-  { name: 'NVIDIA', ticker: 'NVDA', exchange: 'NASDAQ' },
-  { name: 'Intel', ticker: 'INTC', exchange: 'NASDAQ' },
-  { name: 'Cisco', ticker: 'CSCO', exchange: 'NASDAQ' },
-  { name: 'Oracle', ticker: 'ORCL', exchange: 'NYSE' },
-  { name: 'Salesforce', ticker: 'CRM', exchange: 'NYSE' },
-  { name: 'Adobe', ticker: 'ADBE', exchange: 'NASDAQ' },
-  { name: 'IBM', ticker: 'IBM', exchange: 'NYSE' },
-  { name: 'Qualcomm', ticker: 'QCOM', exchange: 'NASDAQ' },
-  { name: 'PayPal', ticker: 'PYPL', exchange: 'NASDAQ' },
-  { name: 'Goldman Sachs', ticker: 'GS', exchange: 'NYSE' },
-  { name: 'JPMorgan Chase', ticker: 'JPM', exchange: 'NYSE' },
-  { name: 'Morgan Stanley', ticker: 'MS', exchange: 'NYSE' },
-  { name: 'Citigroup', ticker: 'C', exchange: 'NYSE' },
-  { name: 'Bank of America', ticker: 'BAC', exchange: 'NYSE' },
-  { name: 'American Express', ticker: 'AXP', exchange: 'NYSE' },
-  { name: 'Visa', ticker: 'V', exchange: 'NYSE' },
-  { name: 'Mastercard', ticker: 'MA', exchange: 'NYSE' },
-  { name: 'Uber', ticker: 'UBER', exchange: 'NYSE' },
-  { name: 'Airbnb', ticker: 'ABNB', exchange: 'NASDAQ' },
-  { name: 'Spotify', ticker: 'SPOT', exchange: 'NYSE' },
-  { name: 'Snap', ticker: 'SNAP', exchange: 'NYSE' },
-  { name: 'Twitter (X)', ticker: 'TWTR', exchange: 'NYSE' },
-  { name: 'Dell Technologies', ticker: 'DELL', exchange: 'NYSE' },
-  { name: 'HP Inc', ticker: 'HPQ', exchange: 'NYSE' },
-  { name: 'VMware', ticker: 'VMW', exchange: 'NYSE' },
-  { name: 'ServiceNow', ticker: 'NOW', exchange: 'NYSE' },
-  { name: 'Workday', ticker: 'WDAY', exchange: 'NASDAQ' },
-  { name: 'Splunk', ticker: 'SPLK', exchange: 'NASDAQ' },
-].sort((a, b) => a.name.localeCompare(b.name));
+// Major companies offering equity compensation in the UK
+const companyList: Company[] = [
+  // US Companies
+  { name: 'Adobe', ticker: 'ADBE', exchange: 'NASDAQ', country: 'US' },
+  { name: 'Airbnb', ticker: 'ABNB', exchange: 'NASDAQ', country: 'US' },
+  { name: 'Amazon', ticker: 'AMZN', exchange: 'NASDAQ', country: 'US' },
+  { name: 'American Express', ticker: 'AXP', exchange: 'NYSE', country: 'US' },
+  { name: 'Apple', ticker: 'AAPL', exchange: 'NASDAQ', country: 'US' },
+  { name: 'Bank of America', ticker: 'BAC', exchange: 'NYSE', country: 'US' },
+  { name: 'Citigroup', ticker: 'C', exchange: 'NYSE', country: 'US' },
+  { name: 'Cisco', ticker: 'CSCO', exchange: 'NASDAQ', country: 'US' },
+  { name: 'Dell Technologies', ticker: 'DELL', exchange: 'NYSE', country: 'US' },
+  { name: 'Goldman Sachs', ticker: 'GS', exchange: 'NYSE', country: 'US' },
+  { name: 'Google (Alphabet)', ticker: 'GOOGL', exchange: 'NASDAQ', country: 'US' },
+  { name: 'HP Inc', ticker: 'HPQ', exchange: 'NYSE', country: 'US' },
+  { name: 'IBM', ticker: 'IBM', exchange: 'NYSE', country: 'US' },
+  { name: 'Intel', ticker: 'INTC', exchange: 'NASDAQ', country: 'US' },
+  { name: 'JPMorgan Chase', ticker: 'JPM', exchange: 'NYSE', country: 'US' },
+  { name: 'Mastercard', ticker: 'MA', exchange: 'NYSE', country: 'US' },
+  { name: 'Meta (Facebook)', ticker: 'META', exchange: 'NASDAQ', country: 'US' },
+  { name: 'Microsoft', ticker: 'MSFT', exchange: 'NASDAQ', country: 'US' },
+  { name: 'Morgan Stanley', ticker: 'MS', exchange: 'NYSE', country: 'US' },
+  { name: 'Netflix', ticker: 'NFLX', exchange: 'NASDAQ', country: 'US' },
+  { name: 'NVIDIA', ticker: 'NVDA', exchange: 'NASDAQ', country: 'US' },
+  { name: 'Oracle', ticker: 'ORCL', exchange: 'NYSE', country: 'US' },
+  { name: 'PayPal', ticker: 'PYPL', exchange: 'NASDAQ', country: 'US' },
+  { name: 'Qualcomm', ticker: 'QCOM', exchange: 'NASDAQ', country: 'US' },
+  { name: 'Salesforce', ticker: 'CRM', exchange: 'NYSE', country: 'US' },
+  { name: 'ServiceNow', ticker: 'NOW', exchange: 'NYSE', country: 'US' },
+  { name: 'Snap', ticker: 'SNAP', exchange: 'NYSE', country: 'US' },
+  { name: 'Splunk', ticker: 'SPLK', exchange: 'NASDAQ', country: 'US' },
+  { name: 'Spotify', ticker: 'SPOT', exchange: 'NYSE', country: 'US' },
+  { name: 'Tesla', ticker: 'TSLA', exchange: 'NASDAQ', country: 'US' },
+  { name: 'Twitter (X)', ticker: 'TWTR', exchange: 'NYSE', country: 'US' },
+  { name: 'Uber', ticker: 'UBER', exchange: 'NYSE', country: 'US' },
+  { name: 'Visa', ticker: 'V', exchange: 'NYSE', country: 'US' },
+  { name: 'VMware', ticker: 'VMW', exchange: 'NYSE', country: 'US' },
+  { name: 'Workday', ticker: 'WDAY', exchange: 'NASDAQ', country: 'US' },
+
+  // FTSE 100 / UK Companies
+  { name: 'AstraZeneca', ticker: 'AZN.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Aviva', ticker: 'AV.L', exchange: 'LSE', country: 'UK' },
+  { name: 'BAE Systems', ticker: 'BA.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Barclays', ticker: 'BARC.L', exchange: 'LSE', country: 'UK' },
+  { name: 'BP', ticker: 'BP.L', exchange: 'LSE', country: 'UK' },
+  { name: 'British American Tobacco', ticker: 'BATS.L', exchange: 'LSE', country: 'UK' },
+  { name: 'BT Group', ticker: 'BT-A.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Burberry', ticker: 'BRBY.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Diageo', ticker: 'DGE.L', exchange: 'LSE', country: 'UK' },
+  { name: 'GSK (GlaxoSmithKline)', ticker: 'GSK.L', exchange: 'LSE', country: 'UK' },
+  { name: 'HSBC', ticker: 'HSBA.L', exchange: 'LSE', country: 'UK' },
+  { name: 'ITV', ticker: 'ITV.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Legal & General', ticker: 'LGEN.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Lloyds Banking Group', ticker: 'LLOY.L', exchange: 'LSE', country: 'UK' },
+  { name: 'National Grid', ticker: 'NG.L', exchange: 'LSE', country: 'UK' },
+  { name: 'NatWest Group', ticker: 'NWG.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Prudential', ticker: 'PRU.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Reckitt Benckiser', ticker: 'RKT.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Relx', ticker: 'REL.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Rolls-Royce', ticker: 'RR.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Sage Group', ticker: 'SGE.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Sainsbury', ticker: 'SBRY.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Shell', ticker: 'SHEL.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Sky (Comcast)', ticker: 'SKY.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Standard Chartered', ticker: 'STAN.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Tesco', ticker: 'TSCO.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Unilever', ticker: 'ULVR.L', exchange: 'LSE', country: 'UK' },
+  { name: 'Vodafone', ticker: 'VOD.L', exchange: 'LSE', country: 'UK' },
+  { name: 'WPP', ticker: 'WPP.L', exchange: 'LSE', country: 'UK' },
+];
+
+export const COMPANIES = companyList.sort((a, b) => a.name.localeCompare(b.name));
 
 export async function fetchStockPrice(ticker: string): Promise<StockPriceData> {
   try {
@@ -146,9 +181,13 @@ export async function fetchStockPrice(ticker: string): Promise<StockPriceData> {
     // Increment counter after successful call
     incrementCallCount();
 
+    // UK stocks (LSE) are priced in pence, convert to pounds
+    const isUKStock = ticker.endsWith('.L');
+    const priceMultiplier = isUKStock ? 0.01 : 1;
+
     return {
-      price: parseFloat(quote['05. price']),
-      change: parseFloat(quote['09. change']),
+      price: parseFloat(quote['05. price']) * priceMultiplier,
+      change: parseFloat(quote['09. change']) * priceMultiplier,
       changePercent: parseFloat(quote['10. change percent'].replace('%', '')),
       lastUpdated: new Date()
     };
