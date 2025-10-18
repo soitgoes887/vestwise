@@ -32,7 +32,7 @@ const RSUESPPCalculator = () => {
     usdToGbp: 1.3,
     cgtRate: 24,
     cgtAllowance: 3000,
-    projectionYears: 7,
+    projectionYears: 5,
     useOwnISA: false,
     useSpouseISA: false,
     ownISAAllowance: 20000,
@@ -55,14 +55,18 @@ const RSUESPPCalculator = () => {
     monthlyContribution: 1000,
     contributionGrowth: 5,
     discount: 15,
-    purchasePeriod: 6 // months
+    purchasePeriod: 6, // months
+    hasStartDate: false,
+    startDate: ''
   });
   const [showConfigureEspp, setShowConfigureEspp] = useState(false);
   const [tempEsppConfig, setTempEsppConfig] = useState({
     monthlyContribution: '1000',
     contributionGrowth: '5',
     discount: '15',
-    purchasePeriod: '6'
+    purchasePeriod: '6',
+    hasStartDate: false,
+    startDate: ''
   });
 
   // Save/Load configuration state
@@ -189,7 +193,9 @@ const RSUESPPCalculator = () => {
       monthlyContribution: Number(tempEsppConfig.monthlyContribution),
       contributionGrowth: Number(tempEsppConfig.contributionGrowth),
       discount: Number(tempEsppConfig.discount),
-      purchasePeriod: Number(tempEsppConfig.purchasePeriod)
+      purchasePeriod: Number(tempEsppConfig.purchasePeriod),
+      hasStartDate: tempEsppConfig.hasStartDate,
+      startDate: tempEsppConfig.startDate
     });
     setShowConfigureEspp(false);
   };
@@ -270,9 +276,11 @@ const RSUESPPCalculator = () => {
 
   const calculations = useMemo(() => {
     const years = Array.from({ length: params.projectionYears }, (_, i) => i + 1);
+    const currentYear = new Date().getFullYear();
 
     interface ResultData {
       year: number;
+      displayYear: string;
       rsuShares: number;
       esppShares: number;
       totalShares: number;
@@ -358,15 +366,40 @@ const RSUESPPCalculator = () => {
         const monthsInYear = year * 12;
         const purchasePeriods = Math.floor(monthsInYear / esppConfig.purchasePeriod);
 
+        // Calculate months from now to ESPP start date (if enabled)
+        let esppStartMonthOffset = 0;
+        if (esppConfig.hasStartDate && esppConfig.startDate) {
+          const now = new Date();
+          const esppStartDate = new Date(esppConfig.startDate);
+          const monthsDiff = (esppStartDate.getFullYear() - now.getFullYear()) * 12 +
+                            (esppStartDate.getMonth() - now.getMonth());
+          esppStartMonthOffset = Math.max(0, monthsDiff);
+        }
+
         for (let period = 1; period <= purchasePeriods; period++) {
           const periodEndMonth = period * esppConfig.purchasePeriod;
           const periodStartMonth = (period - 1) * esppConfig.purchasePeriod;
 
+          // Skip periods before ESPP start date
+          if (periodEndMonth <= esppStartMonthOffset) {
+            continue;
+          }
+
           let periodContribution = 0;
           for (let month = periodStartMonth; month < periodEndMonth; month++) {
+            // Skip months before ESPP start
+            if (month < esppStartMonthOffset) {
+              continue;
+            }
+
             const yearFraction = month / 12;
             const monthlyContribution = esppConfig.monthlyContribution * Math.pow(1 + esppConfig.contributionGrowth / 100, yearFraction);
             periodContribution += monthlyContribution;
+          }
+
+          // Skip if no contribution in this period
+          if (periodContribution === 0) {
+            continue;
           }
 
           const stockPriceAtPeriodStart = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, periodStartMonth / 12);
@@ -424,6 +457,7 @@ const RSUESPPCalculator = () => {
       
       results.push({
         year,
+        displayYear: `${currentYear + year - 1}`,
         rsuShares: Math.round(rsuSharesVested),
         esppShares: Math.round(esppShares),
         totalShares: Math.round(totalShares),
@@ -564,6 +598,9 @@ const RSUESPPCalculator = () => {
                     <div><strong>Growth:</strong> {esppConfig.contributionGrowth}%</div>
                     <div><strong>Discount:</strong> {esppConfig.discount}%</div>
                     <div><strong>Period:</strong> {esppConfig.purchasePeriod} months</div>
+                    {esppConfig.hasStartDate && esppConfig.startDate && (
+                      <div><strong>Start Date:</strong> {esppConfig.startDate}</div>
+                    )}
                   </div>
                   <button
                     onClick={handleDisableEspp}
@@ -576,7 +613,20 @@ const RSUESPPCalculator = () => {
             )}
 
             <button
-              onClick={() => setShowConfigureEspp(!showConfigureEspp)}
+              onClick={() => {
+                if (!showConfigureEspp && esppConfig.enabled) {
+                  // Populate temp config with current values when editing
+                  setTempEsppConfig({
+                    monthlyContribution: esppConfig.monthlyContribution.toString(),
+                    contributionGrowth: esppConfig.contributionGrowth.toString(),
+                    discount: esppConfig.discount.toString(),
+                    purchasePeriod: esppConfig.purchasePeriod.toString(),
+                    hasStartDate: esppConfig.hasStartDate,
+                    startDate: esppConfig.startDate
+                  });
+                }
+                setShowConfigureEspp(!showConfigureEspp);
+              }}
               className="w-full px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
             >
               {showConfigureEspp ? 'Cancel' : esppConfig.enabled ? 'Edit ESPP' : '+ Configure ESPP'}
@@ -625,6 +675,31 @@ const RSUESPPCalculator = () => {
                     <option value="6">Semi-Annual (6 months)</option>
                     <option value="12">Annual (12 months)</option>
                   </select>
+                </div>
+                <div className="pt-2 border-t border-green-200 dark:border-green-700">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={tempEsppConfig.hasStartDate}
+                      onChange={(e) => setTempEsppConfig({...tempEsppConfig, hasStartDate: e.target.checked})}
+                      className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Set ESPP Start Date</span>
+                  </label>
+                  {tempEsppConfig.hasStartDate && (
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">ESPP Start Date</label>
+                      <input
+                        type="date"
+                        value={tempEsppConfig.startDate}
+                        onChange={(e) => setTempEsppConfig({...tempEsppConfig, startDate: e.target.value})}
+                        className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                      />
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Contributions will start from this date
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={handleSaveEsppConfig}
@@ -986,7 +1061,7 @@ const RSUESPPCalculator = () => {
               <ResponsiveContainer width="100%" height="100%">
               <LineChart data={calculations}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" label={{ value: 'Years', position: 'insideBottom', offset: -5 }} />
+                <XAxis dataKey="displayYear" label={{ value: 'Year', position: 'insideBottom', offset: -5 }} />
                 <YAxis label={{ value: 'Shares', angle: -90, position: 'insideLeft' }} />
                 <Tooltip />
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
@@ -1004,7 +1079,7 @@ const RSUESPPCalculator = () => {
               <ResponsiveContainer width="100%" height="100%">
               <BarChart data={calculations}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="year" label={{ value: 'Years', position: 'insideBottom', offset: -5 }} />
+                <XAxis dataKey="displayYear" label={{ value: 'Year', position: 'insideBottom', offset: -5 }} />
                 <YAxis
                   label={{ value: `Value (${showGbp ? '£' : '$'})`, angle: -90, position: 'insideLeft' }}
                   tickFormatter={formatValue}
@@ -1037,7 +1112,7 @@ const RSUESPPCalculator = () => {
               <tbody>
                 {calculations.map((row) => (
                   <tr key={row.year} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-center font-semibold text-gray-900 dark:text-white">{row.year}</td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-center font-semibold text-gray-900 dark:text-white">{row.displayYear}</td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">${row.stockPrice}</td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">{row.rsuShares.toLocaleString()}</td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">{row.esppShares.toLocaleString()}</td>
