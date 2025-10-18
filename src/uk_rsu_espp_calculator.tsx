@@ -138,8 +138,10 @@ const RSUESPPCalculator = () => {
     try {
       const priceData = await fetchStockPrice(company.ticker);
       setStockPriceData(priceData);
-      setParams(prev => ({ ...prev, currentStockPrice: priceData.price }));
-      setStockPriceInput(priceData.price.toString());
+      // Round to 2 decimals for display and calculations
+      const roundedPrice = Math.round(priceData.price * 100) / 100;
+      setParams(prev => ({ ...prev, currentStockPrice: roundedPrice }));
+      setStockPriceInput(roundedPrice.toFixed(2));
     } catch (error) {
       setStockPriceError('Failed to fetch stock price');
       console.error('Stock price error:', error);
@@ -156,8 +158,10 @@ const RSUESPPCalculator = () => {
     try {
       const priceData = await fetchStockPrice(selectedCompany.ticker);
       setStockPriceData(priceData);
-      setParams(prev => ({ ...prev, currentStockPrice: priceData.price }));
-      setStockPriceInput(priceData.price.toString());
+      // Round to 2 decimals for display and calculations
+      const roundedPrice = Math.round(priceData.price * 100) / 100;
+      setParams(prev => ({ ...prev, currentStockPrice: roundedPrice }));
+      setStockPriceInput(roundedPrice.toFixed(2));
     } catch (error) {
       setStockPriceError('Failed to fetch stock price');
       console.error('Stock price error:', error);
@@ -727,6 +731,11 @@ const RSUESPPCalculator = () => {
                     onChange={(e) => {
                       setCompanySearchQuery(e.target.value);
                       setShowCompanyDropdown(true);
+                      // Clear selected company when user starts typing
+                      if (selectedCompany) {
+                        setSelectedCompany(null);
+                        setStockPriceData(null);
+                      }
                     }}
                     onFocus={() => setShowCompanyDropdown(true)}
                     onBlur={() => {
