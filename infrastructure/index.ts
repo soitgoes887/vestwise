@@ -7,6 +7,9 @@ const accountId = pulumi.output(aws.getCallerIdentity({})).accountId;
 // S3 bucket for config storage (free tier: 5GB storage, 20k GET, 2k PUT/month)
 const configBucket = new aws.s3.Bucket("vestwise-configs", {
     acl: "private",
+    tags: {
+        site: "vestwise",
+    },
     serverSideEncryptionConfiguration: {
         rule: {
             applyServerSideEncryptionByDefault: {
@@ -25,6 +28,9 @@ const configBucket = new aws.s3.Bucket("vestwise-configs", {
 // SNS topic for billing alerts
 const billingAlertTopic = new aws.sns.Topic("vestwise-billing-alerts", {
     displayName: "Vestwise Billing Alerts",
+    tags: {
+        site: "vestwise",
+    },
 });
 
 // SNS topic subscription (replace with your email)
@@ -65,6 +71,9 @@ const lambdaRole = new aws.iam.Role("vestwise-lambda-role", {
             Effect: "Allow",
         }],
     }),
+    tags: {
+        site: "vestwise",
+    },
 });
 
 // Attach basic execution policy
@@ -100,6 +109,9 @@ const saveConfigLambda = new aws.lambda.Function("save-config", {
         },
     },
     reservedConcurrentExecutions: 10, // Limit to prevent abuse
+    tags: {
+        site: "vestwise",
+    },
 });
 
 // Load config Lambda
@@ -116,6 +128,9 @@ const loadConfigLambda = new aws.lambda.Function("load-config", {
         },
     },
     reservedConcurrentExecutions: 10, // Limit to prevent abuse
+    tags: {
+        site: "vestwise",
+    },
 });
 
 // Lambda Function URLs (free, no API Gateway needed)

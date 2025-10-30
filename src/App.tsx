@@ -14,16 +14,16 @@ function App() {
   };
 
   const renderPage = () => {
-    switch (currentPage) {
-      case 'home':
-        return <Home onNavigate={handleNavigate} />;
-      case 'calculator':
-        return <RSUESPPCalculator />;
-      case 'about':
-        return <About />;
-      case 'contact':
-        return <Contact />;
-      default:
+      switch (currentPage) {
+          case 'home':
+              return <Home onNavigate={handleNavigate}/>;
+          case 'calculator':
+              return <RSUESPPCalculator/>;
+          case 'about':
+              return <About/>;
+          case 'contact':
+              return <Contact/>;
+          default:
         return <Home onNavigate={handleNavigate} />;
     }
   };

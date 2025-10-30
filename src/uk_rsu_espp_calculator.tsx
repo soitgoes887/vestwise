@@ -365,28 +365,32 @@ const RSUESPPCalculator = () => {
     years.forEach(year => {
       const targetDate = new Date('2025-10-13');
       targetDate.setFullYear(targetDate.getFullYear() + year);
-      
+
       let rsuSharesVested = 0;
       let totalTaxesPaid = 0;
-      
+      let rsuCostBasisUsd = 0; // Track cost basis for CGT calculation
+
       vestingSchedule.forEach(vest => {
         if (vest.date <= targetDate) {
           const monthsSinceNow = (vest.date.getTime() - new Date('2025-10-13').getTime()) / (1000 * 60 * 60 * 24 * 30);
           const stockPriceAtVest = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, monthsSinceNow / 12);
-          
+
           const grossValue = vest.shares * stockPriceAtVest;
           const incomeTax = grossValue * (params.incomeTaxRate / 100);
           const ni = grossValue * (params.niRate / 100);
           const totalTax = incomeTax + ni;
-          
+
           const sharesToSell = Math.ceil(totalTax / stockPriceAtVest);
           const netShares = vest.shares - sharesToSell;
-          
+
           rsuSharesVested += netShares;
           totalTaxesPaid += totalTax;
+
+          // Track cost basis: market value at vesting for the net shares kept
+          rsuCostBasisUsd += netShares * stockPriceAtVest;
         }
       });
-      
+
       let esppShares = 0;
       let esppInvested = 0;
       let esppMarketValueAtPurchase = 0; // Track market value for CGT cost basis
@@ -449,7 +453,7 @@ const RSUESPPCalculator = () => {
           totalTaxesPaid += incomeTaxOnDiscount + niOnDiscount;
         }
       }
-      
+
       const currentStockPrice = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, year);
       const totalShares = rsuSharesVested + esppShares;
       const totalValue = totalShares * currentStockPrice;
@@ -467,10 +471,16 @@ const RSUESPPCalculator = () => {
       cumulativeISAValueGbp += isaContributionThisYear;
 
       // Calculate capital gains if selling all shares
-      // RSUs: No capital gain from vesting - cost basis equals market value at vesting (already taxed as income)
+      // RSUs: Cost basis equals market value at vesting (already taxed as income)
+      // Capital gain = current value - vesting value
+      const rsuCapitalGainUsd = Math.max(0, rsuValue - rsuCostBasisUsd);
+
       // ESPP: Cost basis is market value at purchase (discount already taxed as income)
       const esppCostBasisUsd = esppMarketValueAtPurchase;
-      const capitalGainUsd = Math.max(0, esppValue - esppCostBasisUsd);
+      const esppCapitalGainUsd = Math.max(0, esppValue - esppCostBasisUsd);
+
+      // Total capital gains
+      const capitalGainUsd = rsuCapitalGainUsd + esppCapitalGainUsd;
       const capitalGainGbp = capitalGainUsd / params.usdToGbp;
 
       // Apply ISA protection: ISA-protected shares have no CGT
@@ -483,7 +493,7 @@ const RSUESPPCalculator = () => {
       const cgtTax = taxableGain * (params.cgtRate / 100);
       const netProceedsAfterCgtGbp = (totalValue / params.usdToGbp) - cgtTax;
       const netProceedsAfterCgtUsd = totalValue - (cgtTax * params.usdToGbp);
-      
+
       results.push({
         year,
         displayYear: `${currentYear + year - 1}`,
@@ -505,7 +515,7 @@ const RSUESPPCalculator = () => {
         totalTaxesPaid: Math.round(totalTaxesPaid)
       });
     });
-    
+
     return results;
   }, [params, rsuGrants, esppConfig]);
 
@@ -1142,7 +1152,7 @@ const RSUESPPCalculator = () => {
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">RSU Shares</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">ESPP Shares</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Total Shares</th>
-                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Total Value</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Total Value (After Income Tax)</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Capital Gain (£)</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">CGT Tax (£)</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Net After CGT</th>
