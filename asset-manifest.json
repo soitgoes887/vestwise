@@ -1,16 +1,16 @@
 {
   "files": {
     "main.css": "/static/css/main.aadb3c63.css",
-    "main.js": "/static/js/main.b75173ba.js",
+    "main.js": "/static/js/main.e57e05d6.js",
     "static/js/453.82005d7e.chunk.js": "/static/js/453.82005d7e.chunk.js",
     "index.html": "/index.html",
     "static/media/vestwise-logo-icon-v3.svg": "/static/media/vestwise-logo-icon-v3.45fce12179ea73d4377c70d45b67ee60.svg",
     "main.aadb3c63.css.map": "/static/css/main.aadb3c63.css.map",
-    "main.b75173ba.js.map": "/static/js/main.b75173ba.js.map",
+    "main.e57e05d6.js.map": "/static/js/main.e57e05d6.js.map",
     "453.82005d7e.chunk.js.map": "/static/js/453.82005d7e.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.aadb3c63.css",
-    "static/js/main.b75173ba.js"
+    "static/js/main.e57e05d6.js"
   ]
 }
