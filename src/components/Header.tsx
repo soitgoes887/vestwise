@@ -27,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
               <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
                 Vestwise
               </h1>
-              <p className="text-xs text-indigo-100 dark:text-indigo-200 hidden sm:block">Smart Equity Planning</p>
+              <p className="text-xs text-indigo-100 dark:text-indigo-200 hidden sm:block">Smart Financial Planning</p>
             </div>
           </div>
 
@@ -51,7 +51,17 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
                   : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
               }`}
             >
-              Calculator
+              RSU/ESPP
+            </button>
+            <button
+              onClick={() => onNavigate('pension')}
+              className={`text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+                currentPage === 'pension'
+                  ? 'text-white border-b-2 border-white pb-1'
+                  : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
+              }`}
+            >
+              Pension
             </button>
             <button
               onClick={() => onNavigate('about')}

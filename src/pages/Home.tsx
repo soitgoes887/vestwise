@@ -14,19 +14,27 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             Welcome to <span className="text-indigo-600 dark:text-indigo-400">Vestwise</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
-            Make informed decisions about your equity compensation.
-            Project your RSU and ESPP growth with UK tax calculations for both US and UK companies.
+            Make informed decisions about your equity compensation and pension planning.
+            Project your RSU and ESPP growth with UK tax calculations, or plan your pension retirement fund.
           </p>
-          <button
-            onClick={() => onNavigate('calculator')}
-            className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-lg"
-          >
-            Start Planning Now →
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <button
+              onClick={() => onNavigate('calculator')}
+              className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-lg w-full sm:w-auto"
+            >
+              RSU/ESPP Planning →
+            </button>
+            <button
+              onClick={() => onNavigate('pension')}
+              className="bg-green-600 dark:bg-green-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors shadow-lg w-full sm:w-auto"
+            >
+              Pension Planning →
+            </button>
+          </div>
         </div>
 
         {/* Features Section */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-t-4 border-indigo-600 dark:border-indigo-400">
             <div className="text-3xl mb-3">📊</div>
             <h3 className="text-xl font-semibold mb-2 dark:text-white">RSU Tracking</h3>
@@ -44,10 +52,18 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-t-4 border-green-600 dark:border-green-400">
+            <div className="text-3xl mb-3">🏦</div>
+            <h3 className="text-xl font-semibold mb-2 dark:text-white">Pension Growth</h3>
+            <p className="text-gray-600 dark:text-gray-300">
+              Project your pension pot growth with employer contributions, tax relief, and compound interest calculations.
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-t-4 border-orange-600 dark:border-orange-400">
             <div className="text-3xl mb-3">🇬🇧</div>
             <h3 className="text-xl font-semibold mb-2 dark:text-white">UK Tax Optimized</h3>
             <p className="text-gray-600 dark:text-gray-300">
-              Built for UK employees. Supports both US and UK companies. Income Tax, NI, and CGT calculations included.
+              Built for UK employees. Supports both US and UK companies. Income Tax, NI, CGT, and pension tax relief calculations included.
             </p>
           </div>
         </div>
@@ -91,14 +107,22 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Ready to get started?</h2>
           <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
-            Start projecting your equity compensation in minutes
+            Start projecting your equity compensation or pension growth in minutes
           </p>
-          <button
-            onClick={() => onNavigate('calculator')}
-            className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-lg"
-          >
-            Open Calculator
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <button
+              onClick={() => onNavigate('calculator')}
+              className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-lg w-full sm:w-auto"
+            >
+              RSU/ESPP Planning →
+            </button>
+            <button
+              onClick={() => onNavigate('pension')}
+              className="bg-green-600 dark:bg-green-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors shadow-lg w-full sm:w-auto"
+            >
+              Pension Planning →
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,137 @@
+# Vestwise Project Context
+
+## Project Overview
+**Vestwise** is a financial calculator web application for UK tax residents to manage:
+- RSU (Restricted Stock Units) and ESPP (Employee Stock Purchase Plan) calculations
+- Pension planning with multiple pots and fee structures
+- UK tax calculations (Income Tax, NI, CGT)
+
+**Technology Stack:**
+- React 19 + TypeScript
+- Tailwind CSS (dark mode support)
+- Recharts for visualizations
+- AWS Lambda + S3 (serverless backend)
+- Pulumi (Infrastructure as Code)
+
+**Website:** https://vestwise.co.uk
+**Current Version:** 0.2.0
+
+## Project Structure
+```
+vestwise/
+├── src/
+│   ├── components/
+│   │   └── Header.tsx              # Navigation header
+│   ├── pages/
+│   │   ├── Home.tsx                # Landing page
+│   │   ├── About.tsx               # About page
+│   │   ├── Contact.tsx             # Contact page
+│   │   └── PensionCalculator.tsx   # Pension calculator (NEW in 0.2.0)
+│   ├── services/
+│   │   ├── configService.ts        # Save/load configs to AWS
+│   │   ├── exchangeRateService.ts  # Currency conversion
+│   │   └── stockPriceService.ts    # Stock prices
+│   ├── uk_rsu_espp_calculator.tsx  # Main RSU/ESPP calculator
+│   ├── App.tsx                     # Root component
+│   └── index.tsx                   # Entry point
+├── infrastructure/                  # AWS Pulumi infrastructure
+├── public/                         # Static assets
+└── package.json                    # Dependencies
+```
+
+## Key Features
+
+### RSU/ESPP Calculator
+- Multiple RSU grants with various vesting schedules
+- ESPP with lookback pricing and discounts
+- UK tax calculations (Income Tax 45%, NI 2%, CGT 24%)
+- ISA allowance protection
+- Currency support (USD/GBP)
+- 70+ pre-configured companies (US tech + UK FTSE 100)
+- Save/load configurations with memorable IDs
+
+### Pension Calculator (v0.2.0)
+- Multiple pension pots management
+- Platform fees: Percentage OR Capped (£/year) - mutually exclusive
+- Fund fees (percentage)
+- Tax relief at 20% basic rate
+- Compound interest projections
+- Year-by-year breakdown with fees
+- Visual charts and milestones
+- Edit existing pots inline
+
+## Design Patterns
+- Left sidebar: Input controls (fixed width lg:w-96)
+- Right side: Charts, summaries, tables (flexible width)
+- Dark mode: Follows system preferences
+- Color coding:
+  - Blue: Primary inputs
+  - Purple: Pension pots
+  - Green: Growth/ESPP/Success
+  - Indigo: Header/navigation
+
+## Important Implementation Details
+
+### Pension Fee Calculations
+- **Percentage Fee:** Applied directly to returns (e.g., 5% return - 0.45% fee = 4.55% effective)
+- **Capped Fee:** Converted to percentage based on pot value
+  - Formula: `effectiveFee = (cappedFee / potValue) * 100`
+  - Becomes more advantageous as pot grows
+- Each pot tracks fees independently
+- New contributions use weighted average fee rate
+
+### Tax Calculations
+- **RSU:** Income Tax + NI at vesting, sell-to-cover
+- **ESPP:** Discount taxed as income at purchase
+- **CGT:** Applied to appreciation from cost basis
+- **Pension:** Tax relief at 20% (25% bonus on contributions)
+
+## Git Workflow
+- Auto-commit changes after each significant update
+- Auto-increment minor version (0.2.0 → 0.2.1) unless specified
+- Commit message format: Brief description of changes
+
+## Version History
+
+### 0.2.0 (2025-12-22)
+- Added Pension Calculator page with full functionality
+- Multiple pension pots with add/edit/remove
+- Platform fee options: Percentage OR Capped (£/year)
+- Fund fee percentage
+- Year-by-year growth projections with fee calculations
+- Updated Home page with dual calculator buttons
+- Updated About page with pension planning info
+- Changed tagline from "Smart Equity Planning" to "Smart Financial Planning"
+- Updated navigation: Home | RSU/ESPP | Pension | About | Contact
+
+### 0.1.0 (Previous)
+- Initial release with RSU/ESPP calculator
+- UK tax calculations
+- Save/load configurations
+- AWS serverless backend
+
+## Development Commands
+```bash
+npm start           # Dev server (localhost:3000)
+npm run build       # Production build
+npm run deploy      # Deploy to GitHub Pages
+npm test            # Run tests
+```
+
+## AWS Infrastructure
+```bash
+cd infrastructure
+pulumi up           # Deploy infrastructure
+pulumi stack output # View Lambda URLs
+```
+
+## External APIs
+- **Frankfurter API (ECB):** USD/GBP exchange rates (no key)
+- **Alpha Vantage:** Stock prices (25 calls/day free tier)
+
+## Future Considerations
+- Add more pension visualization options
+- ISA calculator
+- Salary sacrifice calculator
+- PDF export of projections
+- Historical performance tracking

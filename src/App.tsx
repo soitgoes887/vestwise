@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import RSUESPPCalculator from './uk_rsu_espp_calculator';
+import PensionCalculator from './pages/PensionCalculator';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -19,6 +20,8 @@ function App() {
               return <Home onNavigate={handleNavigate}/>;
           case 'calculator':
               return <RSUESPPCalculator/>;
+          case 'pension':
+              return <PensionCalculator/>;
           case 'about':
               return <About/>;
           case 'contact':
