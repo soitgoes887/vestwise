@@ -2,22 +2,9 @@ const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
 const s3 = new S3Client({});
 
 exports.handler = async (event) => {
-    // CORS headers for all responses
     const headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
+        'Content-Type': 'application/json'
     };
-
-    // Handle OPTIONS preflight request
-    if (event.requestContext?.http?.method === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers,
-            body: ''
-        };
-    }
 
     try {
         const uuid = event.queryStringParameters?.uuid;

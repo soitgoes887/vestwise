@@ -139,7 +139,7 @@ const saveFunctionUrl = new aws.lambda.FunctionUrl("save-url", {
     authorizationType: "NONE",
     cors: {
         allowOrigins: ["*"],
-        allowMethods: ["POST", "OPTIONS"],
+        allowMethods: ["POST"],
         allowHeaders: ["content-type"],
         maxAge: 86400, // Cache preflight for 24 hours
     },
@@ -150,7 +150,7 @@ const loadFunctionUrl = new aws.lambda.FunctionUrl("load-url", {
     authorizationType: "NONE",
     cors: {
         allowOrigins: ["*"],
-        allowMethods: ["GET", "OPTIONS"],
+        allowMethods: ["GET"],
         allowHeaders: ["content-type"],
         maxAge: 86400, // Cache preflight for 24 hours
     },
