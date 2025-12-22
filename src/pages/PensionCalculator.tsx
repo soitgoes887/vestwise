@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { savePensionConfig, loadPensionConfig, generateReadableUUID } from '../services/configService';
+import { saveConfig, loadConfig, generateReadableUUID } from '../services/configService';
 
 interface PensionPot {
   id: string;
@@ -120,8 +120,9 @@ const PensionCalculator: React.FC = () => {
     try {
       const uuid = configUuid || generateReadableUUID();
       const config = {
+        configType: 'pension' as const,
         pensionPots,
-        inputs: {
+        pensionInputs: {
           pensionableIncome,
           ownContributionPct,
           employerContributionPct,
@@ -131,7 +132,7 @@ const PensionCalculator: React.FC = () => {
         }
       };
 
-      await savePensionConfig(uuid, config);
+      await saveConfig(uuid, config);
       setConfigUuid(uuid);
       setSaveStatus({ type: 'success', message: `Saved! Your ID: ${uuid}` });
       setTimeout(() => setSaveStatus({ type: null, message: '' }), 5000);
@@ -142,14 +143,23 @@ const PensionCalculator: React.FC = () => {
 
   const handleLoadConfiguration = async () => {
     try {
-      const config = await loadPensionConfig(loadUuid);
+      const config = await loadConfig(loadUuid);
+
+      // Check if this is a pension configuration
+      if (config.configType !== 'pension' && !config.pensionPots) {
+        setLoadStatus({ type: 'error', message: 'This ID contains an RSU/ESPP configuration, not a pension plan.' });
+        return;
+      }
+
       setPensionPots(config.pensionPots || []);
-      setPensionableIncome(config.inputs.pensionableIncome || '80000');
-      setOwnContributionPct(config.inputs.ownContributionPct || '8');
-      setEmployerContributionPct(config.inputs.employerContributionPct || '10');
-      setCurrentAge(config.inputs.currentAge || '37');
-      setRetirementAge(config.inputs.retirementAge || '65');
-      setAnnualReturn(config.inputs.annualReturn || '5');
+      if (config.pensionInputs) {
+        setPensionableIncome(config.pensionInputs.pensionableIncome || '80000');
+        setOwnContributionPct(config.pensionInputs.ownContributionPct || '8');
+        setEmployerContributionPct(config.pensionInputs.employerContributionPct || '10');
+        setCurrentAge(config.pensionInputs.currentAge || '37');
+        setRetirementAge(config.pensionInputs.retirementAge || '65');
+        setAnnualReturn(config.pensionInputs.annualReturn || '5');
+      }
       setConfigUuid(loadUuid);
 
       setLoadStatus({ type: 'success', message: 'Configuration loaded successfully!' });

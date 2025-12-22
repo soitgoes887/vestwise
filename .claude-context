@@ -98,7 +98,11 @@ vestwise/
 - Users can save pension configurations with memorable IDs (e.g., "quick-bear-12345")
 - Load saved configurations to restore pension pots and all input parameters
 - Save/load uses same AWS Lambda backend as RSU/ESPP calculator
-- Updated configService.ts with SavedPensionConfig interface and helper functions
+- Unified SavedConfig interface to support both RSU and Pension configs with configType discriminator
+- Fixed Lambda CORS issues: Added proper headers and OPTIONS handling
+- Updated Lambda functions to return Access-Control-Allow-Origin headers
+- Updated infrastructure to include OPTIONS in allowed methods
+- Both calculators now tag configs with type ('rsu' or 'pension') for validation
 
 ### 0.2.0 (2025-12-22)
 - Added Pension Calculator page with full functionality
@@ -131,6 +135,21 @@ cd infrastructure
 pulumi up           # Deploy infrastructure
 pulumi stack output # View Lambda URLs
 ```
+
+**IMPORTANT: Configure Lambda URLs**
+After deploying the infrastructure, you need to configure the Lambda Function URLs:
+1. Run `cd infrastructure && pulumi stack output --json`
+2. Copy the `saveUrl` and `loadUrl` values
+3. Either:
+   - Create `.env` file in project root:
+     ```
+     REACT_APP_SAVE_CONFIG_URL=https://xxx.lambda-url.region.on.aws/
+     REACT_APP_LOAD_CONFIG_URL=https://yyy.lambda-url.region.on.aws/
+     ```
+   - Or update `src/services/configService.ts` with hardcoded URLs
+4. Rebuild the project: `npm run build`
+
+Without configured Lambda URLs, save/load functionality will fail with 404 errors.
 
 ## External APIs
 - **Frankfurter API (ECB):** USD/GBP exchange rates (no key)

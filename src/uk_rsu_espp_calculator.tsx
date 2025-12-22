@@ -217,7 +217,7 @@ const RSUESPPCalculator = () => {
   const handleSaveConfiguration = async () => {
     try {
       const uuid = configUuid || generateReadableUUID();
-      const config = { rsuGrants, esppConfig, params, baseCurrency, selectedCompany };
+      const config = { configType: 'rsu' as const, rsuGrants, esppConfig, params, baseCurrency, selectedCompany };
 
       await saveConfig(uuid, config);
       setConfigUuid(uuid);

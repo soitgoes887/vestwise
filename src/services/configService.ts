@@ -4,9 +4,9 @@ const SAVE_URL = process.env.REACT_APP_SAVE_CONFIG_URL || 'YOUR_SAVE_LAMBDA_URL'
 const LOAD_URL = process.env.REACT_APP_LOAD_CONFIG_URL || 'YOUR_LOAD_LAMBDA_URL';
 
 export interface SavedConfig {
-  rsuGrants: any[];
-  esppConfig: any;
-  params: any;
+  rsuGrants?: any[];
+  esppConfig?: any;
+  params?: any;
   baseCurrency?: 'USD' | 'GBP';
   selectedCompany?: {
     name: string;
@@ -14,6 +14,18 @@ export interface SavedConfig {
     exchange: string;
     country: 'US' | 'UK';
   } | null;
+  // Pension calculator fields
+  pensionPots?: any[];
+  pensionInputs?: {
+    pensionableIncome: string;
+    ownContributionPct: string;
+    employerContributionPct: string;
+    currentAge: string;
+    retirementAge: string;
+    annualReturn: string;
+  };
+  // Add a type discriminator
+  configType?: 'rsu' | 'pension';
 }
 
 export interface SavedPensionConfig {
@@ -26,6 +38,7 @@ export interface SavedPensionConfig {
     retirementAge: string;
     annualReturn: string;
   };
+  configType: 'pension';
 }
 
 export async function saveConfig(uuid: string, config: SavedConfig): Promise<{ success: boolean; uuid: string }> {
@@ -61,43 +74,6 @@ export async function loadConfig(uuid: string): Promise<SavedConfig> {
     return await response.json();
   } catch (error) {
     console.error('Error loading config:', error);
-    throw error;
-  }
-}
-
-export async function savePensionConfig(uuid: string, config: SavedPensionConfig): Promise<{ success: boolean; uuid: string }> {
-  try {
-    const response = await fetch(SAVE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uuid, config })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error saving pension config:', error);
-    throw error;
-  }
-}
-
-export async function loadPensionConfig(uuid: string): Promise<SavedPensionConfig> {
-  try {
-    const response = await fetch(`${LOAD_URL}?uuid=${uuid}`);
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('Configuration not found');
-      }
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error loading pension config:', error);
     throw error;
   }
 }
