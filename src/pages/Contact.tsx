@@ -34,10 +34,10 @@ const Contact: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8 text-center">Get in Touch</h1>
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">Get in Touch</h1>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 mb-8">
-          <p className="text-gray-700 dark:text-gray-300 text-center mb-8">
+          <p className="text-gray-700 dark:text-gray-300 mb-8">
             Have questions, feedback, or suggestions? We'd love to hear from you!
           </p>
 
@@ -70,7 +70,7 @@ const Contact: React.FC = () => {
         </div>
 
         <div className="bg-indigo-50 dark:bg-gray-800 rounded-lg border-2 border-indigo-200 dark:border-indigo-600 p-8">
-          <h2 className="text-2xl font-semibold text-indigo-900 dark:text-indigo-400 mb-4 text-center">
+          <h2 className="text-2xl font-semibold text-indigo-900 dark:text-indigo-400 mb-4">
             Quick Contact Form
           </h2>
 

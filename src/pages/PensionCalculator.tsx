@@ -35,12 +35,12 @@ const PensionCalculator: React.FC = () => {
   });
 
   // Input state
-  const [pensionableIncome, setPensionableIncome] = useState<string>('80000');
-  const [ownContributionPct, setOwnContributionPct] = useState<string>('8');
-  const [employerContributionPct, setEmployerContributionPct] = useState<string>('10');
-  const [currentAge, setCurrentAge] = useState<string>('37');
-  const [retirementAge, setRetirementAge] = useState<string>('65');
-  const [annualReturn, setAnnualReturn] = useState<string>('5');
+  const [pensionableIncome, setPensionableIncome] = useState<string>('');
+  const [ownContributionPct, setOwnContributionPct] = useState<string>('');
+  const [employerContributionPct, setEmployerContributionPct] = useState<string>('');
+  const [currentAge, setCurrentAge] = useState<string>('');
+  const [retirementAge, setRetirementAge] = useState<string>('');
+  const [annualReturn, setAnnualReturn] = useState<string>('');
 
   // Save/Load configuration state
   const [configUuid, setConfigUuid] = useState('');
@@ -613,22 +613,6 @@ const PensionCalculator: React.FC = () => {
                 </p>
               </div>
             </div>
-          </div>
-
-          {/* Formula Explanation */}
-          <div className="bg-yellow-50 dark:bg-gray-800 p-4 rounded-lg">
-            <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-white">The Formula</h3>
-            <p className="mb-2 text-sm text-gray-800 dark:text-gray-200">We use the <strong>Future Value of Annuity</strong> formula with fees:</p>
-            <div className="bg-white dark:bg-gray-700 p-3 rounded font-mono text-xs text-gray-900 dark:text-gray-100">
-              FV = PV×(1+r-f)^n + PMT×[(1+r-f)^n-1]/(r-f)
-            </div>
-            <ul className="mt-3 space-y-1 text-xs text-gray-800 dark:text-gray-200">
-              <li><strong>PV</strong> = Present Value (total pot: £{totalCurrentPot.toLocaleString()})</li>
-              <li><strong>PMT</strong> = Monthly payment (£{monthlyContribution.toFixed(2)})</li>
-              <li><strong>r</strong> = Annual return ({returnRate}%)</li>
-              <li><strong>f</strong> = Annual fees (platform + fund)</li>
-              <li><strong>n</strong> = Months ({months})</li>
-            </ul>
           </div>
 
           {/* Key Assumptions */}
