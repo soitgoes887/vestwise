@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { savePensionConfig, loadPensionConfig, generateReadableUUID } from '../services/configService';
 
 interface PensionPot {
   id: string;
@@ -40,6 +41,13 @@ const PensionCalculator: React.FC = () => {
   const [currentAge, setCurrentAge] = useState<string>('37');
   const [retirementAge, setRetirementAge] = useState<string>('65');
   const [annualReturn, setAnnualReturn] = useState<string>('5');
+
+  // Save/Load configuration state
+  const [configUuid, setConfigUuid] = useState('');
+  const [loadUuid, setLoadUuid] = useState('');
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
+  const [loadStatus, setLoadStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
+  const [showSaveLoad, setShowSaveLoad] = useState(false);
 
   // Handlers for pension pots
   const handleAddPot = () => {
@@ -105,6 +113,50 @@ const PensionCalculator: React.FC = () => {
     ));
     setEditingPotId(null);
     setEditPot({ name: '', currentValue: '', platformFeeType: 'percentage', platformFee: '', cappedFee: '', fundFee: '' });
+  };
+
+  // Save/Load handlers
+  const handleSaveConfiguration = async () => {
+    try {
+      const uuid = configUuid || generateReadableUUID();
+      const config = {
+        pensionPots,
+        inputs: {
+          pensionableIncome,
+          ownContributionPct,
+          employerContributionPct,
+          currentAge,
+          retirementAge,
+          annualReturn
+        }
+      };
+
+      await savePensionConfig(uuid, config);
+      setConfigUuid(uuid);
+      setSaveStatus({ type: 'success', message: `Saved! Your ID: ${uuid}` });
+      setTimeout(() => setSaveStatus({ type: null, message: '' }), 5000);
+    } catch (error) {
+      setSaveStatus({ type: 'error', message: 'Failed to save configuration' });
+    }
+  };
+
+  const handleLoadConfiguration = async () => {
+    try {
+      const config = await loadPensionConfig(loadUuid);
+      setPensionPots(config.pensionPots || []);
+      setPensionableIncome(config.inputs.pensionableIncome || '80000');
+      setOwnContributionPct(config.inputs.ownContributionPct || '8');
+      setEmployerContributionPct(config.inputs.employerContributionPct || '10');
+      setCurrentAge(config.inputs.currentAge || '37');
+      setRetirementAge(config.inputs.retirementAge || '65');
+      setAnnualReturn(config.inputs.annualReturn || '5');
+      setConfigUuid(loadUuid);
+
+      setLoadStatus({ type: 'success', message: 'Configuration loaded successfully!' });
+      setTimeout(() => setLoadStatus({ type: null, message: '' }), 5000);
+    } catch (error) {
+      setLoadStatus({ type: 'error', message: 'Failed to load configuration. Check your ID and try again.' });
+    }
   };
 
   // Parse input values
@@ -581,6 +633,71 @@ const PensionCalculator: React.FC = () => {
               <li>Contributions assumed constant in real terms</li>
               <li>Compound interest means most growth in later years</li>
             </ul>
+          </div>
+
+          {/* Save/Load Configuration */}
+          <div className="bg-orange-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-orange-200 dark:border-orange-600">
+            <button
+              onClick={() => setShowSaveLoad(!showSaveLoad)}
+              className="w-full px-4 py-2 bg-orange-600 dark:bg-orange-500 text-white rounded font-semibold hover:bg-orange-700 dark:hover:bg-orange-600 transition-colors"
+            >
+              {showSaveLoad ? 'Hide Save/Load' : '💾 Save/Load Configuration'}
+            </button>
+
+            {showSaveLoad && (
+              <div className="mt-4 space-y-4 bg-white dark:bg-gray-700 p-3 rounded border border-orange-300 dark:border-orange-600">
+                <div>
+                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Save Configuration</h3>
+                  {configUuid && (
+                    <div className="mb-2 p-2 bg-blue-100 dark:bg-blue-900 rounded text-sm text-gray-900 dark:text-white">
+                      <strong>Current ID:</strong> {configUuid}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleSaveConfiguration}
+                    className="w-full px-4 py-2 bg-orange-600 dark:bg-orange-500 text-white rounded font-semibold hover:bg-orange-700 dark:hover:bg-orange-600 transition-colors"
+                  >
+                    {configUuid ? 'Update Configuration' : 'Save Configuration'}
+                  </button>
+                  {saveStatus.type && (
+                    <div className={`mt-2 p-2 rounded text-sm ${
+                      saveStatus.type === 'success'
+                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                    }`}>
+                      {saveStatus.message}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-orange-200 dark:border-orange-700">
+                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Load Configuration</h3>
+                  <input
+                    type="text"
+                    value={loadUuid}
+                    onChange={(e) => setLoadUuid(e.target.value)}
+                    placeholder="Enter your config ID"
+                    className="w-full p-2 border rounded mb-2 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  />
+                  <button
+                    onClick={handleLoadConfiguration}
+                    disabled={!loadUuid}
+                    className="w-full px-4 py-2 bg-orange-600 dark:bg-orange-500 text-white rounded font-semibold hover:bg-orange-700 dark:hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Load Configuration
+                  </button>
+                  {loadStatus.type && (
+                    <div className={`mt-2 p-2 rounded text-sm ${
+                      loadStatus.type === 'success'
+                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                    }`}>
+                      {loadStatus.message}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

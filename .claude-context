@@ -14,7 +14,7 @@
 - Pulumi (Infrastructure as Code)
 
 **Website:** https://vestwise.co.uk
-**Current Version:** 0.2.0
+**Current Version:** 0.2.1
 
 ## Project Structure
 ```
@@ -92,6 +92,13 @@ vestwise/
 - Commit message format: Brief description of changes
 
 ## Version History
+
+### 0.2.1 (2025-12-22)
+- Added save/load functionality for Pension Calculator
+- Users can save pension configurations with memorable IDs (e.g., "quick-bear-12345")
+- Load saved configurations to restore pension pots and all input parameters
+- Save/load uses same AWS Lambda backend as RSU/ESPP calculator
+- Updated configService.ts with SavedPensionConfig interface and helper functions
 
 ### 0.2.0 (2025-12-22)
 - Added Pension Calculator page with full functionality
