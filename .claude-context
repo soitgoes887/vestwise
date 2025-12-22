@@ -137,19 +137,25 @@ pulumi stack output # View Lambda URLs
 ```
 
 **IMPORTANT: Configure Lambda URLs**
-After deploying the infrastructure, you need to configure the Lambda Function URLs:
-1. Run `cd infrastructure && pulumi stack output --json`
-2. Copy the `saveUrl` and `loadUrl` values
-3. Either:
-   - Create `.env` file in project root:
-     ```
-     REACT_APP_SAVE_CONFIG_URL=https://xxx.lambda-url.region.on.aws/
-     REACT_APP_LOAD_CONFIG_URL=https://yyy.lambda-url.region.on.aws/
-     ```
-   - Or update `src/services/configService.ts` with hardcoded URLs
-4. Rebuild the project: `npm run build`
+The save/load functionality requires Lambda Function URLs to be configured. See `LAMBDA_SETUP.md` for detailed instructions.
 
-Without configured Lambda URLs, save/load functionality will fail with 404 errors.
+**Quick Setup:**
+```bash
+./configure-lambda-urls.sh  # Auto-configure URLs
+npm run build               # Rebuild with URLs
+npm run deploy             # Deploy to production
+```
+
+**Manual Setup:**
+1. Get URLs: `cd infrastructure && pulumi stack output --json`
+2. Create `.env.local` file with:
+   ```
+   REACT_APP_SAVE_CONFIG_URL=https://xxx.lambda-url.region.on.aws/
+   REACT_APP_LOAD_CONFIG_URL=https://yyy.lambda-url.region.on.aws/
+   ```
+3. Rebuild: `npm run build`
+
+Without configured Lambda URLs, save/load will fail with "Unexpected token '<'" errors.
 
 ## External APIs
 - **Frankfurter API (ECB):** USD/GBP exchange rates (no key)
