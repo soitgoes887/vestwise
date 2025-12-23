@@ -53,6 +53,9 @@ const PensionCalculator: React.FC = () => {
   const [compareMode, setCompareMode] = useState(false);
   const [selectedPotsForCompare, setSelectedPotsForCompare] = useState<string[]>([]);
 
+  // Contribution destination state
+  const [contributionDestination, setContributionDestination] = useState<string>('split-equally');
+
   // Handlers for pension pots
   const handleAddPot = () => {
     if (!newPot.name || !newPot.currentValue) {
@@ -77,6 +80,10 @@ const PensionCalculator: React.FC = () => {
 
   const handleRemovePot = (id: string) => {
     setPensionPots(pensionPots.filter(pot => pot.id !== id));
+    // Reset contribution destination if the removed pot was selected
+    if (contributionDestination === id) {
+      setContributionDestination('split-equally');
+    }
   };
 
   const handleStartEdit = (pot: PensionPot) => {
@@ -154,7 +161,8 @@ const PensionCalculator: React.FC = () => {
           employerContributionPct,
           currentAge,
           retirementAge,
-          annualReturn
+          annualReturn,
+          contributionDestination
         }
       };
 
@@ -185,6 +193,7 @@ const PensionCalculator: React.FC = () => {
         setCurrentAge(config.pensionInputs.currentAge || '37');
         setRetirementAge(config.pensionInputs.retirementAge || '65');
         setAnnualReturn(config.pensionInputs.annualReturn || '5');
+        setContributionDestination((config.pensionInputs as any).contributionDestination || 'split-equally');
       }
       setConfigUuid(loadUuid);
 
@@ -222,18 +231,25 @@ const PensionCalculator: React.FC = () => {
     for (let year = 0; year <= years; year++) {
       const monthsElapsed = year * 12;
 
-      // Calculate growth for each pot with fees
+      // Calculate growth for each pot with fees and contributions
       let totalPotValue = 0;
       let totalFeesDeducted = 0;
 
       for (const pot of pensionPots) {
+        // Determine monthly contribution for this pot
+        let potMonthlyContribution = 0;
+        if (contributionDestination === 'split-equally') {
+          potMonthlyContribution = monthlyContribution / pensionPots.length;
+        } else if (contributionDestination === pot.id) {
+          potMonthlyContribution = monthlyContribution;
+        }
+
         // Calculate effective platform fee
         let effectivePlatformFee = 0;
         if (pot.platformFeeType === 'percentage') {
           effectivePlatformFee = pot.platformFee;
         } else {
           // Capped fee: convert absolute amount to percentage based on current pot value
-          // Cap is per year, so calculate as percentage of pot value
           const currentPotValue = pot.currentValue * Math.pow(1 + (returnRate / 100 / 12), monthsElapsed);
           effectivePlatformFee = currentPotValue > 0 ? (pot.cappedFee / currentPotValue) * 100 : 0;
         }
@@ -242,39 +258,28 @@ const PensionCalculator: React.FC = () => {
         const totalAnnualFee = effectivePlatformFee + pot.fundFee;
         const effectiveMonthlyRate = (returnRate - totalAnnualFee) / 100 / 12;
 
-        // Growth of this pot with fees
+        // Growth of initial pot value with fees
         const potValue = pot.currentValue * Math.pow(1 + effectiveMonthlyRate, monthsElapsed);
-        totalPotValue += potValue;
 
-        // Calculate fees deducted
+        // Future value of contributions for this pot
+        const contributionsValue = monthsElapsed === 0 ? 0 :
+          potMonthlyContribution * (Math.pow(1 + effectiveMonthlyRate, monthsElapsed) - 1) / effectiveMonthlyRate;
+
+        totalPotValue += potValue + contributionsValue;
+
+        // Calculate fees deducted on initial value
         const potValueWithoutFees = pot.currentValue * Math.pow(1 + (returnRate / 100 / 12), monthsElapsed);
         totalFeesDeducted += (potValueWithoutFees - potValue);
-      }
 
-      // Calculate average fee rate weighted by pot values for new contributions
-      let avgAnnualFee = 0;
-      if (pensionPots.length > 0 && totalCurrentPot > 0) {
-        let totalWeightedFee = 0;
-        for (const pot of pensionPots) {
-          let effectivePlatformFee = 0;
-          if (pot.platformFeeType === 'percentage') {
-            effectivePlatformFee = pot.platformFee;
-          } else {
-            // For new contributions, use capped fee as percentage of pot value
-            effectivePlatformFee = pot.currentValue > 0 ? (pot.cappedFee / pot.currentValue) * 100 : 0;
-          }
-          totalWeightedFee += (effectivePlatformFee + pot.fundFee) * pot.currentValue;
+        // Calculate fees deducted on contributions
+        if (monthsElapsed > 0 && potMonthlyContribution > 0) {
+          const contributionsValueWithoutFees = potMonthlyContribution *
+            (Math.pow(1 + (returnRate / 100 / 12), monthsElapsed) - 1) / (returnRate / 100 / 12);
+          totalFeesDeducted += (contributionsValueWithoutFees - contributionsValue);
         }
-        avgAnnualFee = totalWeightedFee / totalCurrentPot;
       }
 
-      const effectiveMonthlyRate = (returnRate - avgAnnualFee) / 100 / 12;
-
-      // Future value of contributions (with average fee rate)
-      const contributionsValue = monthsElapsed === 0 ? 0 :
-        monthlyContribution * (Math.pow(1 + effectiveMonthlyRate, monthsElapsed) - 1) / effectiveMonthlyRate;
-
-      const totalValue = totalPotValue + contributionsValue;
+      const totalValue = totalPotValue;
       const totalContributed = totalCurrentPot + (monthlyContribution * monthsElapsed);
       const growthAmount = totalValue - totalContributed;
 
@@ -288,13 +293,20 @@ const PensionCalculator: React.FC = () => {
     }
 
     return data;
-  }, [age, years, monthlyContribution, returnRate, pensionPots, totalCurrentPot]);
+  }, [age, years, monthlyContribution, returnRate, pensionPots, totalCurrentPot, contributionDestination]);
 
   // Calculate growth data for a single pot (for comparison mode)
   const calculatePotGrowth = useMemo(() => {
     return (pot: PensionPot) => {
       const data = [];
-      const potMonthlyContribution = monthlyContribution / pensionPots.length; // Distribute contributions evenly
+
+      // Determine monthly contribution for this pot based on destination setting
+      let potMonthlyContribution = 0;
+      if (contributionDestination === 'split-equally') {
+        potMonthlyContribution = monthlyContribution / pensionPots.length;
+      } else if (contributionDestination === pot.id) {
+        potMonthlyContribution = monthlyContribution;
+      }
 
       for (let year = 0; year <= years; year++) {
         const monthsElapsed = year * 12;
@@ -322,17 +334,32 @@ const PensionCalculator: React.FC = () => {
         const totalContributed = pot.currentValue + (potMonthlyContribution * monthsElapsed);
         const growthAmount = totalValue - totalContributed;
 
+        // Calculate fees deducted
+        let feesDeducted = 0;
+
+        // Fees on initial value
+        const potValueWithoutFees = pot.currentValue * Math.pow(1 + (returnRate / 100 / 12), monthsElapsed);
+        feesDeducted += (potValueWithoutFees - potValue);
+
+        // Fees on contributions
+        if (monthsElapsed > 0 && potMonthlyContribution > 0) {
+          const contributionsValueWithoutFees = potMonthlyContribution *
+            (Math.pow(1 + (returnRate / 100 / 12), monthsElapsed) - 1) / (returnRate / 100 / 12);
+          feesDeducted += (contributionsValueWithoutFees - contributionsValue);
+        }
+
         data.push({
           year: age + year,
           value: Math.round(totalValue),
           contributed: Math.round(totalContributed),
-          growth: Math.round(growthAmount)
+          growth: Math.round(growthAmount),
+          fees: Math.round(feesDeducted)
         });
       }
 
       return data;
     };
-  }, [age, years, monthlyContribution, returnRate, pensionPots.length]);
+  }, [age, years, monthlyContribution, returnRate, pensionPots, contributionDestination]);
 
   const futureValue = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].value : 0;
   const totalContributed = totalCurrentPot + (monthlyContribution * months);
@@ -673,6 +700,31 @@ const PensionCalculator: React.FC = () => {
                   Annual: £{(monthlyContribution * 12).toFixed(2)}
                 </div>
               </div>
+              {pensionPots.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">
+                    Contribution Destination
+                  </label>
+                  <select
+                    value={contributionDestination}
+                    onChange={(e) => setContributionDestination(e.target.value)}
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  >
+                    <option value="split-equally">Split Equally Among All Pots</option>
+                    {pensionPots.map((pot) => (
+                      <option key={pot.id} value={pot.id}>
+                        {pot.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    {contributionDestination === 'split-equally'
+                      ? `£${(monthlyContribution / pensionPots.length).toFixed(2)}/month per pot`
+                      : `All contributions go to ${pensionPots.find(p => p.id === contributionDestination)?.name || 'selected pot'}`
+                    }
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -809,7 +861,7 @@ const PensionCalculator: React.FC = () => {
           {!compareMode ? (
             <>
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded border border-green-200 dark:border-green-700">
                   <div className="text-sm text-gray-600 dark:text-gray-400">Final Pot Value</div>
                   <div className="text-2xl font-bold text-green-700 dark:text-green-400">
@@ -826,6 +878,12 @@ const PensionCalculator: React.FC = () => {
                   <div className="text-sm text-gray-600 dark:text-gray-400">Investment Growth</div>
                   <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">
                     £{Math.round(futureValue - totalContributed).toLocaleString()}
+                  </div>
+                </div>
+                <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded border border-red-200 dark:border-red-700">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Total Fees</div>
+                  <div className="text-2xl font-bold text-red-700 dark:text-red-400">
+                    £{Math.round(yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].fees : 0).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -862,6 +920,7 @@ const PensionCalculator: React.FC = () => {
                       <Legend wrapperStyle={{ paddingTop: '20px' }} />
                       <Line type="monotone" dataKey="contributed" stroke="#3b82f6" name="Total Contributed" />
                       <Line type="monotone" dataKey="value" stroke="#10b981" name="Total Value" strokeWidth={2} />
+                      <Line type="monotone" dataKey="fees" stroke="#ef4444" name="Total Fees" strokeDasharray="5 5" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -888,6 +947,7 @@ const PensionCalculator: React.FC = () => {
                         const potData = calculatePotGrowth(pot);
                         const potFutureValue = potData.length > 0 ? potData[potData.length - 1].value : 0;
                         const potTotalContributed = potData.length > 0 ? potData[potData.length - 1].contributed : 0;
+                        const potTotalFees = potData.length > 0 ? potData[potData.length - 1].fees : 0;
 
                         return (
                           <div key={potId} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border-2 border-indigo-200 dark:border-indigo-600">
@@ -909,6 +969,12 @@ const PensionCalculator: React.FC = () => {
                                 <span className="text-xs text-gray-600 dark:text-gray-400">Growth:</span>
                                 <span className="text-sm font-bold text-purple-700 dark:text-purple-400">
                                   £{Math.round(potFutureValue - potTotalContributed).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">Fees:</span>
+                                <span className="text-sm font-bold text-red-700 dark:text-red-400">
+                                  £{Math.round(potTotalFees).toLocaleString()}
                                 </span>
                               </div>
                             </div>
@@ -935,6 +1001,7 @@ const PensionCalculator: React.FC = () => {
                                   const potData = calculatePotGrowth(pot);
                                   if (potData[year]) {
                                     dataPoint[pot.name] = potData[year].value;
+                                    dataPoint[`${pot.name} Fees`] = potData[year].fees;
                                   }
                                 }
                               });
@@ -981,6 +1048,23 @@ const PensionCalculator: React.FC = () => {
                                   stroke={colors[index]}
                                   strokeWidth={2}
                                   name={pot.name}
+                                />
+                              );
+                            })}
+                            {selectedPotsForCompare.map((potId, index) => {
+                              const pot = pensionPots.find(p => p.id === potId);
+                              if (!pot) return null;
+
+                              const feeColors = ['#ef4444', '#dc2626', '#b91c1c']; // red shades
+                              return (
+                                <Line
+                                  key={`${potId}-fees`}
+                                  type="monotone"
+                                  dataKey={`${pot.name} Fees`}
+                                  stroke={feeColors[index]}
+                                  strokeWidth={1}
+                                  strokeDasharray="5 5"
+                                  name={`${pot.name} Fees`}
                                 />
                               );
                             })}
