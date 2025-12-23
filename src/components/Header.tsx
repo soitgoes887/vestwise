@@ -1,21 +1,17 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import logo from '../vestwise-logo-icon-v3.svg';
 
-interface HeaderProps {
-  currentPage: string;
-  onNavigate: (page: string) => void;
-}
+const Header: React.FC = () => {
+  const location = useLocation();
+  const currentPath = location.pathname;
 
-const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
   return (
     <header className="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-800 dark:to-purple-800 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-3 md:py-4">
           {/* Logo and Brand */}
-          <div
-            className="flex items-center space-x-2 md:space-x-3 cursor-pointer"
-            onClick={() => onNavigate('home')}
-          >
+          <Link to="/" className="flex items-center space-x-2 md:space-x-3">
             {/* Logo Icon */}
             <img
               src={logo}
@@ -29,60 +25,60 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
               </h1>
               <p className="text-xs text-indigo-100 dark:text-indigo-200 hidden sm:block">Smart Financial Planning</p>
             </div>
-          </div>
+          </Link>
 
           {/* Navigation Links */}
           <nav className="flex flex-wrap justify-end gap-2 sm:gap-3 md:gap-0 md:space-x-8">
-            <button
-              onClick={() => onNavigate('home')}
+            <Link
+              to="/"
               className={`text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                currentPage === 'home'
+                currentPath === '/'
                   ? 'text-white border-b-2 border-white pb-1'
                   : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
               }`}
             >
               Home
-            </button>
-            <button
-              onClick={() => onNavigate('calculator')}
+            </Link>
+            <Link
+              to="/rsu"
               className={`text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                currentPage === 'calculator'
+                currentPath === '/rsu'
                   ? 'text-white border-b-2 border-white pb-1'
                   : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
               }`}
             >
               RSU/ESPP
-            </button>
-            <button
-              onClick={() => onNavigate('pension')}
+            </Link>
+            <Link
+              to="/pension"
               className={`text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                currentPage === 'pension'
+                currentPath === '/pension'
                   ? 'text-white border-b-2 border-white pb-1'
                   : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
               }`}
             >
               Pension
-            </button>
-            <button
-              onClick={() => onNavigate('about')}
+            </Link>
+            <Link
+              to="/about"
               className={`text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                currentPage === 'about'
+                currentPath === '/about'
                   ? 'text-white border-b-2 border-white pb-1'
                   : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
               }`}
             >
               About
-            </button>
-            <button
-              onClick={() => onNavigate('contact')}
+            </Link>
+            <Link
+              to="/contact"
               className={`text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                currentPage === 'contact'
+                currentPath === '/contact'
                   ? 'text-white border-b-2 border-white pb-1'
                   : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
               }`}
             >
               Contact
-            </button>
+            </Link>
           </nav>
         </div>
       </div>

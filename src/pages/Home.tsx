@@ -1,10 +1,7 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
-interface HomeProps {
-  onNavigate: (page: string) => void;
-}
-
-const Home: React.FC<HomeProps> = ({ onNavigate }) => {
+const Home: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -18,18 +15,18 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             Project your RSU and ESPP growth with UK tax calculations, or plan your pension retirement fund.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button
-              onClick={() => onNavigate('calculator')}
-              className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-lg w-full sm:w-auto"
+            <Link
+              to="/rsu"
+              className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-lg w-full sm:w-auto text-center"
             >
               RSU/ESPP Planning →
-            </button>
-            <button
-              onClick={() => onNavigate('pension')}
-              className="bg-green-600 dark:bg-green-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors shadow-lg w-full sm:w-auto"
+            </Link>
+            <Link
+              to="/pension"
+              className="bg-green-600 dark:bg-green-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors shadow-lg w-full sm:w-auto text-center"
             >
               Pension Planning →
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -110,18 +107,18 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             Start projecting your equity compensation or pension growth in minutes
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button
-              onClick={() => onNavigate('calculator')}
-              className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-lg w-full sm:w-auto"
+            <Link
+              to="/rsu"
+              className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-lg w-full sm:w-auto text-center"
             >
               RSU/ESPP Planning →
-            </button>
-            <button
-              onClick={() => onNavigate('pension')}
-              className="bg-green-600 dark:bg-green-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors shadow-lg w-full sm:w-auto"
+            </Link>
+            <Link
+              to="/pension"
+              className="bg-green-600 dark:bg-green-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors shadow-lg w-full sm:w-auto text-center"
             >
               Pension Planning →
-            </button>
+            </Link>
           </div>
         </div>
       </div>

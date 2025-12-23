@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import Header from './components/Header';
 import Home from './pages/Home';
@@ -8,34 +9,19 @@ import RSUESPPCalculator from './uk_rsu_espp_calculator';
 import PensionCalculator from './pages/PensionCalculator';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('home');
-
-  const handleNavigate = (page: string) => {
-    setCurrentPage(page);
-  };
-
-  const renderPage = () => {
-      switch (currentPage) {
-          case 'home':
-              return <Home onNavigate={handleNavigate}/>;
-          case 'calculator':
-              return <RSUESPPCalculator/>;
-          case 'pension':
-              return <PensionCalculator/>;
-          case 'about':
-              return <About/>;
-          case 'contact':
-              return <Contact/>;
-          default:
-        return <Home onNavigate={handleNavigate} />;
-    }
-  };
-
   return (
-    <div className="App">
-      <Header currentPage={currentPage} onNavigate={handleNavigate} />
-      {renderPage()}
-    </div>
+    <Router>
+      <div className="App">
+        <Header />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/rsu" element={<RSUESPPCalculator />} />
+          <Route path="/pension" element={<PensionCalculator />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
