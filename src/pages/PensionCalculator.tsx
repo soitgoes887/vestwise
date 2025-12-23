@@ -49,6 +49,10 @@ const PensionCalculator: React.FC = () => {
   const [loadStatus, setLoadStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
   const [showSaveLoad, setShowSaveLoad] = useState(false);
 
+  // Comparison mode state
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedPotsForCompare, setSelectedPotsForCompare] = useState<string[]>([]);
+
   // Handlers for pension pots
   const handleAddPot = () => {
     if (!newPot.name || !newPot.currentValue) {
@@ -113,6 +117,28 @@ const PensionCalculator: React.FC = () => {
     ));
     setEditingPotId(null);
     setEditPot({ name: '', currentValue: '', platformFeeType: 'percentage', platformFee: '', cappedFee: '', fundFee: '' });
+  };
+
+  // Comparison handlers
+  const handleToggleCompare = () => {
+    if (compareMode) {
+      setCompareMode(false);
+      setSelectedPotsForCompare([]);
+    } else {
+      setCompareMode(true);
+      // Auto-select first 3 pots if available
+      setSelectedPotsForCompare(pensionPots.slice(0, Math.min(3, pensionPots.length)).map(p => p.id));
+    }
+  };
+
+  const handleTogglePotSelection = (potId: string) => {
+    if (selectedPotsForCompare.includes(potId)) {
+      setSelectedPotsForCompare(selectedPotsForCompare.filter(id => id !== potId));
+    } else {
+      if (selectedPotsForCompare.length < 3) {
+        setSelectedPotsForCompare([...selectedPotsForCompare, potId]);
+      }
+    }
   };
 
   // Save/Load handlers
@@ -263,6 +289,50 @@ const PensionCalculator: React.FC = () => {
 
     return data;
   }, [age, years, monthlyContribution, returnRate, pensionPots, totalCurrentPot]);
+
+  // Calculate growth data for a single pot (for comparison mode)
+  const calculatePotGrowth = useMemo(() => {
+    return (pot: PensionPot) => {
+      const data = [];
+      const potMonthlyContribution = monthlyContribution / pensionPots.length; // Distribute contributions evenly
+
+      for (let year = 0; year <= years; year++) {
+        const monthsElapsed = year * 12;
+
+        // Calculate effective platform fee
+        let effectivePlatformFee = 0;
+        if (pot.platformFeeType === 'percentage') {
+          effectivePlatformFee = pot.platformFee;
+        } else {
+          const currentPotValue = pot.currentValue * Math.pow(1 + (returnRate / 100 / 12), monthsElapsed);
+          effectivePlatformFee = currentPotValue > 0 ? (pot.cappedFee / currentPotValue) * 100 : 0;
+        }
+
+        const totalAnnualFee = effectivePlatformFee + pot.fundFee;
+        const effectiveMonthlyRate = (returnRate - totalAnnualFee) / 100 / 12;
+
+        // Growth of this pot with fees
+        const potValue = pot.currentValue * Math.pow(1 + effectiveMonthlyRate, monthsElapsed);
+
+        // Future value of contributions for this pot
+        const contributionsValue = monthsElapsed === 0 ? 0 :
+          potMonthlyContribution * (Math.pow(1 + effectiveMonthlyRate, monthsElapsed) - 1) / effectiveMonthlyRate;
+
+        const totalValue = potValue + contributionsValue;
+        const totalContributed = pot.currentValue + (potMonthlyContribution * monthsElapsed);
+        const growthAmount = totalValue - totalContributed;
+
+        data.push({
+          year: age + year,
+          value: Math.round(totalValue),
+          contributed: Math.round(totalContributed),
+          growth: Math.round(growthAmount)
+        });
+      }
+
+      return data;
+    };
+  }, [age, years, monthlyContribution, returnRate, pensionPots.length]);
 
   const futureValue = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].value : 0;
   const totalContributed = totalCurrentPot + (monthlyContribution * months);
@@ -510,6 +580,44 @@ const PensionCalculator: React.FC = () => {
                 </button>
               </div>
             )}
+
+            {/* Compare Pots Button */}
+            {pensionPots.length > 1 && (
+              <button
+                onClick={handleToggleCompare}
+                className="w-full mt-3 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
+              >
+                {compareMode ? 'Exit Compare Mode' : '📊 Compare Pots'}
+              </button>
+            )}
+
+            {/* Pot Selection for Comparison */}
+            {compareMode && (
+              <div className="mt-3 p-3 bg-indigo-50 dark:bg-gray-700 rounded border border-indigo-200 dark:border-indigo-600">
+                <h3 className="text-sm font-semibold text-indigo-900 dark:text-white mb-2">
+                  Select up to 3 pots to compare:
+                </h3>
+                <div className="space-y-2">
+                  {pensionPots.map((pot) => (
+                    <label key={pot.id} className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedPotsForCompare.includes(pot.id)}
+                        onChange={() => handleTogglePotSelection(pot.id)}
+                        disabled={!selectedPotsForCompare.includes(pot.id) && selectedPotsForCompare.length >= 3}
+                        className="mr-2"
+                      />
+                      <span className={`text-sm ${selectedPotsForCompare.includes(pot.id) ? 'font-semibold text-indigo-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {pot.name} (£{pot.currentValue.toLocaleString()})
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {selectedPotsForCompare.length === 0 && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">Please select at least one pot to compare</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Pension Inputs */}
@@ -698,64 +806,193 @@ const PensionCalculator: React.FC = () => {
         {/* Right side - Charts and results */}
         <div className="flex-1 space-y-8 min-w-0">
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded border border-green-200 dark:border-green-700">
-              <div className="text-sm text-gray-600 dark:text-gray-400">Final Pot Value</div>
-              <div className="text-2xl font-bold text-green-700 dark:text-green-400">
-                £{Math.round(futureValue).toLocaleString()}
+          {!compareMode ? (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded border border-green-200 dark:border-green-700">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Final Pot Value</div>
+                  <div className="text-2xl font-bold text-green-700 dark:text-green-400">
+                    £{Math.round(futureValue).toLocaleString()}
+                  </div>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded border border-blue-200 dark:border-blue-700">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Total Contributed</div>
+                  <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+                    £{Math.round(totalContributed).toLocaleString()}
+                  </div>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded border border-purple-200 dark:border-purple-700">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Investment Growth</div>
+                  <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">
+                    £{Math.round(futureValue - totalContributed).toLocaleString()}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded border border-blue-200 dark:border-blue-700">
-              <div className="text-sm text-gray-600 dark:text-gray-400">Total Contributed</div>
-              <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-                £{Math.round(totalContributed).toLocaleString()}
-              </div>
-            </div>
-            <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded border border-purple-200 dark:border-purple-700">
-              <div className="text-sm text-gray-600 dark:text-gray-400">Investment Growth</div>
-              <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">
-                £{Math.round(futureValue - totalContributed).toLocaleString()}
-              </div>
-            </div>
-          </div>
 
-          {/* Growth Chart */}
-          <div className="overflow-hidden bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-            <h2 className="text-xl md:text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Growth Over Time</h2>
-            <div className="w-full" style={{ minHeight: '300px', height: '400px' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={yearlyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis
-                    dataKey="year"
-                    label={{ value: 'Age', position: 'insideBottom', offset: -5 }}
-                    stroke="#6b7280"
-                    tick={{ fill: '#6b7280' }}
-                  />
-                  <YAxis
-                    label={{ value: 'Value (£)', angle: -90, position: 'insideLeft' }}
-                    tickFormatter={(value) => `£${(value/1000).toFixed(0)}k`}
-                    stroke="#6b7280"
-                    tick={{ fill: '#6b7280' }}
-                  />
-                  <Tooltip
-                    formatter={(value: number) => `£${value.toLocaleString()}`}
-                    labelFormatter={(label) => `Age ${label}`}
-                    contentStyle={{
-                      backgroundColor: '#1f2937',
-                      border: '1px solid #374151',
-                      borderRadius: '0.375rem',
-                      color: '#f3f4f6'
-                    }}
-                  />
-                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                  <Line type="monotone" dataKey="contributed" stroke="#3b82f6" name="Total Contributed" />
-                  <Line type="monotone" dataKey="value" stroke="#10b981" name="Total Value" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+              {/* Growth Chart */}
+              <div className="overflow-hidden bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+                <h2 className="text-xl md:text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Growth Over Time</h2>
+                <div className="w-full" style={{ minHeight: '300px', height: '400px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={yearlyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis
+                        dataKey="year"
+                        label={{ value: 'Age', position: 'insideBottom', offset: -5 }}
+                        stroke="#6b7280"
+                        tick={{ fill: '#6b7280' }}
+                      />
+                      <YAxis
+                        label={{ value: 'Value (£)', angle: -90, position: 'insideLeft' }}
+                        tickFormatter={(value) => `£${(value/1000).toFixed(0)}k`}
+                        stroke="#6b7280"
+                        tick={{ fill: '#6b7280' }}
+                      />
+                      <Tooltip
+                        formatter={(value: number) => `£${value.toLocaleString()}`}
+                        labelFormatter={(label) => `Age ${label}`}
+                        contentStyle={{
+                          backgroundColor: '#1f2937',
+                          border: '1px solid #374151',
+                          borderRadius: '0.375rem',
+                          color: '#f3f4f6'
+                        }}
+                      />
+                      <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                      <Line type="monotone" dataKey="contributed" stroke="#3b82f6" name="Total Contributed" />
+                      <Line type="monotone" dataKey="value" stroke="#10b981" name="Total Value" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Comparison Mode - Combined Chart */}
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-indigo-900 dark:text-white">Pot Comparison</h2>
+
+                {selectedPotsForCompare.length === 0 ? (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded border border-yellow-200 dark:border-yellow-700">
+                    <p className="text-yellow-800 dark:text-yellow-200">Please select at least one pot to compare</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Summary Cards for Each Pot */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {selectedPotsForCompare.map((potId) => {
+                        const pot = pensionPots.find(p => p.id === potId);
+                        if (!pot) return null;
+
+                        const potData = calculatePotGrowth(pot);
+                        const potFutureValue = potData.length > 0 ? potData[potData.length - 1].value : 0;
+                        const potTotalContributed = potData.length > 0 ? potData[potData.length - 1].contributed : 0;
+
+                        return (
+                          <div key={potId} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border-2 border-indigo-200 dark:border-indigo-600">
+                            <h3 className="text-lg font-semibold text-indigo-900 dark:text-white mb-2">{pot.name}</h3>
+                            <div className="space-y-2">
+                              <div className="flex justify-between">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">Final Value:</span>
+                                <span className="text-sm font-bold text-green-700 dark:text-green-400">
+                                  £{Math.round(potFutureValue).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">Contributed:</span>
+                                <span className="text-sm font-bold text-blue-700 dark:text-blue-400">
+                                  £{Math.round(potTotalContributed).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">Growth:</span>
+                                <span className="text-sm font-bold text-purple-700 dark:text-purple-400">
+                                  £{Math.round(potFutureValue - potTotalContributed).toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Combined Comparison Chart */}
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+                      <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Growth Comparison</h3>
+                      <div className="w-full" style={{ minHeight: '300px', height: '400px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={(() => {
+                            // Combine all pot data into a single dataset
+                            const combinedData: any[] = [];
+
+                            for (let year = 0; year <= years; year++) {
+                              const dataPoint: any = { year: age + year };
+
+                              selectedPotsForCompare.forEach((potId, index) => {
+                                const pot = pensionPots.find(p => p.id === potId);
+                                if (pot) {
+                                  const potData = calculatePotGrowth(pot);
+                                  if (potData[year]) {
+                                    dataPoint[pot.name] = potData[year].value;
+                                  }
+                                }
+                              });
+
+                              combinedData.push(dataPoint);
+                            }
+
+                            return combinedData;
+                          })()}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                            <XAxis
+                              dataKey="year"
+                              label={{ value: 'Age', position: 'insideBottom', offset: -5 }}
+                              stroke="#6b7280"
+                              tick={{ fill: '#6b7280' }}
+                            />
+                            <YAxis
+                              label={{ value: 'Value (£)', angle: -90, position: 'insideLeft' }}
+                              tickFormatter={(value) => `£${(value/1000).toFixed(0)}k`}
+                              stroke="#6b7280"
+                              tick={{ fill: '#6b7280' }}
+                            />
+                            <Tooltip
+                              formatter={(value: number) => `£${value.toLocaleString()}`}
+                              labelFormatter={(label) => `Age ${label}`}
+                              contentStyle={{
+                                backgroundColor: '#1f2937',
+                                border: '1px solid #374151',
+                                borderRadius: '0.375rem',
+                                color: '#f3f4f6'
+                              }}
+                            />
+                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                            {selectedPotsForCompare.map((potId, index) => {
+                              const pot = pensionPots.find(p => p.id === potId);
+                              if (!pot) return null;
+
+                              const colors = ['#10b981', '#3b82f6', '#f59e0b']; // green, blue, amber
+                              return (
+                                <Line
+                                  key={potId}
+                                  type="monotone"
+                                  dataKey={pot.name}
+                                  stroke={colors[index]}
+                                  strokeWidth={2}
+                                  name={pot.name}
+                                />
+                              );
+                            })}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Key Milestones Table */}
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
