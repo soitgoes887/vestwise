@@ -41,7 +41,7 @@ const PensionCalculator: React.FC = () => {
   const [currentAge, setCurrentAge] = useState<string>('');
   const [retirementAge, setRetirementAge] = useState<string>('');
   const [annualReturn, setAnnualReturn] = useState<string>('');
-
+  const [salaryIncrease, setSalaryIncrease] = useState<string>('2');
   // Save/Load configuration state
   const [configUuid, setConfigUuid] = useState('');
   const [loadUuid, setLoadUuid] = useState('');
@@ -162,6 +162,7 @@ const PensionCalculator: React.FC = () => {
           currentAge,
           retirementAge,
           annualReturn,
+          salaryIncrease,
           contributionDestination
         }
       };
@@ -193,6 +194,7 @@ const PensionCalculator: React.FC = () => {
         setCurrentAge(config.pensionInputs.currentAge || '37');
         setRetirementAge(config.pensionInputs.retirementAge || '65');
         setAnnualReturn(config.pensionInputs.annualReturn || '5');
+        setSalaryIncrease((config.pensionInputs as any).salaryIncrease || '2');
         setContributionDestination((config.pensionInputs as any).contributionDestination || 'split-equally');
       }
       setConfigUuid(loadUuid);
@@ -211,6 +213,7 @@ const PensionCalculator: React.FC = () => {
   const age = parseInt(currentAge) || 37;
   const retAge = parseInt(retirementAge) || 65;
   const returnRate = parseFloat(annualReturn) || 5;
+  const salaryIncreaseRate = parseFloat(salaryIncrease) || 2;
 
   // Calculate total current pot value
   const totalCurrentPot = pensionPots.reduce((sum, pot) => sum + pot.currentValue, 0);
@@ -236,12 +239,12 @@ const PensionCalculator: React.FC = () => {
       let totalFeesDeducted = 0;
 
       for (const pot of pensionPots) {
-        // Determine monthly contribution for this pot
-        let potMonthlyContribution = 0;
+        // Determine base monthly contribution for this pot
+        let baseMonthlyContribution = 0;
         if (contributionDestination === 'split-equally') {
-          potMonthlyContribution = monthlyContribution / pensionPots.length;
+          baseMonthlyContribution = monthlyContribution / pensionPots.length;
         } else if (contributionDestination === pot.id) {
-          potMonthlyContribution = monthlyContribution;
+          baseMonthlyContribution = monthlyContribution;
         }
 
         // Calculate effective platform fee
@@ -249,38 +252,62 @@ const PensionCalculator: React.FC = () => {
         if (pot.platformFeeType === 'percentage') {
           effectivePlatformFee = pot.platformFee;
         } else {
-          // Capped fee: convert absolute amount to percentage based on current pot value
           const currentPotValue = pot.currentValue * Math.pow(1 + (returnRate / 100 / 12), monthsElapsed);
           effectivePlatformFee = currentPotValue > 0 ? (pot.cappedFee / currentPotValue) * 100 : 0;
         }
 
-        // Combined annual fee (platform + fund)
         const totalAnnualFee = effectivePlatformFee + pot.fundFee;
         const effectiveMonthlyRate = (returnRate - totalAnnualFee) / 100 / 12;
 
         // Growth of initial pot value with fees
         const potValue = pot.currentValue * Math.pow(1 + effectiveMonthlyRate, monthsElapsed);
 
-        // Future value of contributions for this pot
-        const contributionsValue = monthsElapsed === 0 ? 0 :
-          potMonthlyContribution * (Math.pow(1 + effectiveMonthlyRate, monthsElapsed) - 1) / effectiveMonthlyRate;
+        // Calculate contributions with salary increases
+        // For each contribution year, calculate its growth to the current year
+        let contributionsValue = 0;
+        let contributionsValueWithoutFees = 0;
+        for (let contributionYear = 0; contributionYear < year; contributionYear++) {
+          // Monthly contribution for this contribution year (adjusted for salary increase)
+          const adjustedMonthlyContribution = baseMonthlyContribution * Math.pow(1 + salaryIncreaseRate / 100, contributionYear);
+
+          // Months this contribution has been growing
+          const growthMonths = (year - contributionYear) * 12;
+
+          // Future value of this year's contributions
+          const yearlyContributionFV = adjustedMonthlyContribution * 12 * Math.pow(1 + effectiveMonthlyRate, growthMonths);
+          contributionsValue += yearlyContributionFV;
+
+          // Calculate without fees for fee tracking
+          const yearlyContributionFVNoFees = adjustedMonthlyContribution * 12 * Math.pow(1 + (returnRate / 100 / 12), growthMonths);
+          contributionsValueWithoutFees += yearlyContributionFVNoFees;
+        }
+
+        // Add current year's contributions (not yet grown)
+        if (year > 0) {
+          const currentYearContribution = baseMonthlyContribution * Math.pow(1 + salaryIncreaseRate / 100, year);
+          contributionsValue += currentYearContribution * 12;
+          contributionsValueWithoutFees += currentYearContribution * 12;
+        }
 
         totalPotValue += potValue + contributionsValue;
 
-        // Calculate fees deducted on initial value
+        // Calculate fees deducted
         const potValueWithoutFees = pot.currentValue * Math.pow(1 + (returnRate / 100 / 12), monthsElapsed);
         totalFeesDeducted += (potValueWithoutFees - potValue);
+        totalFeesDeducted += (contributionsValueWithoutFees - contributionsValue);
+      }
 
-        // Calculate fees deducted on contributions
-        if (monthsElapsed > 0 && potMonthlyContribution > 0) {
-          const contributionsValueWithoutFees = potMonthlyContribution *
-            (Math.pow(1 + (returnRate / 100 / 12), monthsElapsed) - 1) / (returnRate / 100 / 12);
-          totalFeesDeducted += (contributionsValueWithoutFees - contributionsValue);
-        }
+      // Calculate total contributed with salary increases
+      let totalContributed = totalCurrentPot;
+      for (let contributionYear = 0; contributionYear < year; contributionYear++) {
+        const adjustedAnnualContribution = monthlyContribution * 12 * Math.pow(1 + salaryIncreaseRate / 100, contributionYear);
+        totalContributed += adjustedAnnualContribution;
+      }
+      if (year > 0) {
+        totalContributed += monthlyContribution * 12 * Math.pow(1 + salaryIncreaseRate / 100, year);
       }
 
       const totalValue = totalPotValue;
-      const totalContributed = totalCurrentPot + (monthlyContribution * monthsElapsed);
       const growthAmount = totalValue - totalContributed;
 
       data.push({
@@ -293,19 +320,19 @@ const PensionCalculator: React.FC = () => {
     }
 
     return data;
-  }, [age, years, monthlyContribution, returnRate, pensionPots, totalCurrentPot, contributionDestination]);
+  }, [age, years, monthlyContribution, returnRate, pensionPots, totalCurrentPot, contributionDestination, salaryIncreaseRate]);
 
   // Calculate growth data for a single pot (for comparison mode)
   const calculatePotGrowth = useMemo(() => {
     return (pot: PensionPot) => {
       const data = [];
 
-      // Determine monthly contribution for this pot based on destination setting
-      let potMonthlyContribution = 0;
+      // Determine base monthly contribution for this pot based on destination setting
+      let basePotMonthlyContribution = 0;
       if (contributionDestination === 'split-equally') {
-        potMonthlyContribution = monthlyContribution / pensionPots.length;
+        basePotMonthlyContribution = monthlyContribution / pensionPots.length;
       } else if (contributionDestination === pot.id) {
-        potMonthlyContribution = monthlyContribution;
+        basePotMonthlyContribution = monthlyContribution;
       }
 
       for (let year = 0; year <= years; year++) {
@@ -326,27 +353,44 @@ const PensionCalculator: React.FC = () => {
         // Growth of this pot with fees
         const potValue = pot.currentValue * Math.pow(1 + effectiveMonthlyRate, monthsElapsed);
 
-        // Future value of contributions for this pot
-        const contributionsValue = monthsElapsed === 0 ? 0 :
-          potMonthlyContribution * (Math.pow(1 + effectiveMonthlyRate, monthsElapsed) - 1) / effectiveMonthlyRate;
+        // Calculate contributions with salary increases
+        let contributionsValue = 0;
+        let contributionsValueWithoutFees = 0;
+        for (let contributionYear = 0; contributionYear < year; contributionYear++) {
+          const adjustedMonthlyContribution = basePotMonthlyContribution * Math.pow(1 + salaryIncreaseRate / 100, contributionYear);
+          const growthMonths = (year - contributionYear) * 12;
+
+          const yearlyContributionFV = adjustedMonthlyContribution * 12 * Math.pow(1 + effectiveMonthlyRate, growthMonths);
+          contributionsValue += yearlyContributionFV;
+
+          const yearlyContributionFVNoFees = adjustedMonthlyContribution * 12 * Math.pow(1 + (returnRate / 100 / 12), growthMonths);
+          contributionsValueWithoutFees += yearlyContributionFVNoFees;
+        }
+
+        // Add current year's contributions
+        if (year > 0) {
+          const currentYearContribution = basePotMonthlyContribution * Math.pow(1 + salaryIncreaseRate / 100, year);
+          contributionsValue += currentYearContribution * 12;
+          contributionsValueWithoutFees += currentYearContribution * 12;
+        }
 
         const totalValue = potValue + contributionsValue;
-        const totalContributed = pot.currentValue + (potMonthlyContribution * monthsElapsed);
+
+        // Calculate total contributed with salary increases
+        let totalContributed = pot.currentValue;
+        for (let contributionYear = 0; contributionYear < year; contributionYear++) {
+          const adjustedAnnualContribution = basePotMonthlyContribution * 12 * Math.pow(1 + salaryIncreaseRate / 100, contributionYear);
+          totalContributed += adjustedAnnualContribution;
+        }
+        if (year > 0) {
+          totalContributed += basePotMonthlyContribution * 12 * Math.pow(1 + salaryIncreaseRate / 100, year);
+        }
+
         const growthAmount = totalValue - totalContributed;
 
         // Calculate fees deducted
-        let feesDeducted = 0;
-
-        // Fees on initial value
         const potValueWithoutFees = pot.currentValue * Math.pow(1 + (returnRate / 100 / 12), monthsElapsed);
-        feesDeducted += (potValueWithoutFees - potValue);
-
-        // Fees on contributions
-        if (monthsElapsed > 0 && potMonthlyContribution > 0) {
-          const contributionsValueWithoutFees = potMonthlyContribution *
-            (Math.pow(1 + (returnRate / 100 / 12), monthsElapsed) - 1) / (returnRate / 100 / 12);
-          feesDeducted += (contributionsValueWithoutFees - contributionsValue);
-        }
+        const feesDeducted = (potValueWithoutFees - potValue) + (contributionsValueWithoutFees - contributionsValue);
 
         data.push({
           year: age + year,
@@ -359,7 +403,7 @@ const PensionCalculator: React.FC = () => {
 
       return data;
     };
-  }, [age, years, monthlyContribution, returnRate, pensionPots, contributionDestination]);
+  }, [age, years, monthlyContribution, returnRate, pensionPots, contributionDestination, salaryIncreaseRate]);
 
   const futureValue = yearlyData.length > 0 ? yearlyData[yearlyData.length - 1].value : 0;
   const totalContributed = totalCurrentPot + (monthlyContribution * months);
@@ -770,6 +814,21 @@ const PensionCalculator: React.FC = () => {
                 />
                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   Typical pension growth: 4-7% per year after fees
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Annual Salary Increase (%)</label>
+                <input
+                  type="number"
+                  value={salaryIncrease}
+                  onChange={(e) => setSalaryIncrease(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  placeholder="e.g., 2"
+                  step="0.1"
+                />
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  Your contributions will increase with salary growth
                 </p>
               </div>
             </div>
