@@ -15,10 +15,6 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    # Skip deployment for commits that only touch PR validation workflow or docs
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      !contains(github.event.head_commit.message, '[skip deploy]')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
