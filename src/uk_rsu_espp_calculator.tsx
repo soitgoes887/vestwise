@@ -1133,7 +1133,7 @@ const RSUESPPCalculator = () => {
                   label={{ value: `Value (${baseCurrency === 'USD' ? '$' : '£'})`, angle: -90, position: 'insideLeft' }}
                   tickFormatter={formatValue}
                 />
-                <Tooltip formatter={(value) => `${baseCurrency === 'USD' ? '$' : '£'}${value.toLocaleString()}`} />
+                <Tooltip formatter={(value) => `${baseCurrency === 'USD' ? '$' : '£'}${(value as number)?.toLocaleString() ?? 0}`} />
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
                 <Bar dataKey={baseCurrency === 'USD' ? "rsuValue" : "rsuValueGbp"} stackId="a" fill="#3b82f6" name="RSU Value" />
                 <Bar dataKey={baseCurrency === 'USD' ? "esppValue" : "esppValueGbp"} stackId="a" fill="#10b981" name="ESPP Value" />
