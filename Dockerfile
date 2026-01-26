@@ -1,5 +1,5 @@
-# Build stage
-FROM node:20-alpine AS build
+# Build stage - runs on native architecture (x86 on GitHub runners)
+FROM --platform=$BUILDPLATFORM node:20-alpine AS build
 
 WORKDIR /app
 
@@ -19,8 +19,7 @@ ENV REACT_APP_FMP_API_KEY=$REACT_APP_FMP_API_KEY
 COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm ci --legacy-peer-deps && \
-    ls -la node_modules/.bin/ | head -10
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -28,7 +27,7 @@ COPY . .
 # Build the app
 RUN npm run build
 
-# Production stage
+# Production stage - ARM64 for K8s cluster
 FROM nginx:alpine
 
 # Copy built assets from build stage
