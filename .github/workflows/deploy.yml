@@ -110,9 +110,9 @@ jobs:
 
       - name: Create GitHub Release
         if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v1
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: v${{ steps.version.outputs.tag }}
+          tag: v${{ steps.version.outputs.tag }}
           name: v${{ steps.version.outputs.tag }}
           body: |
             Automated release from commit ${{ github.sha }}
@@ -120,6 +120,5 @@ jobs:
             **Changes:** ${{ github.event.head_commit.message }}
 
             **Docker Image:** `${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}`
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          generateReleaseNotes: true
+          skipIfReleaseExists: true
