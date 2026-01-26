@@ -23,14 +23,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Install dependencies
         run: |
-          npm install --legacy-peer-deps
-          ls -la node_modules/.bin/ | head -5
-          which react-scripts || echo "react-scripts not in PATH"
-          npx react-scripts --version || echo "react-scripts check failed"
+          corepack enable
+          yarn install --frozen-lockfile || yarn install
 
       - name: Build React app
         env:
@@ -38,7 +35,7 @@ jobs:
           REACT_APP_LOAD_CONFIG_URL: ${{ secrets.REACT_APP_LOAD_CONFIG_URL }}
           REACT_APP_ALPHA_VANTAGE_API_KEY: ${{ secrets.REACT_APP_ALPHA_VANTAGE_API_KEY }}
           REACT_APP_FMP_API_KEY: ${{ secrets.REACT_APP_FMP_API_KEY }}
-        run: npx react-scripts build
+        run: yarn build
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
