@@ -17,12 +17,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'yarn'
 
       - name: Install dependencies
         run: |
           corepack enable
-          yarn install --frozen-lockfile || yarn install
+          yarn install
 
       - name: Run tests
         run: yarn test --watchAll=false --coverage --passWithNoTests
@@ -47,12 +46,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'yarn'
 
       - name: Install dependencies
         run: |
           corepack enable
-          yarn install --frozen-lockfile || yarn install
+          yarn install
 
       - name: Build application
         run: yarn build
@@ -81,12 +79,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'yarn'
 
       - name: Install dependencies
         run: |
           corepack enable
-          yarn install --frozen-lockfile || yarn install
+          yarn install
 
       - name: Run TypeScript type check
         run: npx tsc --noEmit
