@@ -1,42 +1,14 @@
-# Build stage - runs on native architecture (x86 on GitHub runners)
-FROM --platform=$BUILDPLATFORM node:20-alpine AS build
+# Production Dockerfile - packages pre-built React assets
+# Build is done in GitHub Actions, this just creates the nginx image
 
-WORKDIR /app
-
-# Build arguments for React environment variables
-ARG REACT_APP_SAVE_CONFIG_URL
-ARG REACT_APP_LOAD_CONFIG_URL
-ARG REACT_APP_ALPHA_VANTAGE_API_KEY
-ARG REACT_APP_FMP_API_KEY
-
-# Set as environment variables for the build
-ENV REACT_APP_SAVE_CONFIG_URL=$REACT_APP_SAVE_CONFIG_URL
-ENV REACT_APP_LOAD_CONFIG_URL=$REACT_APP_LOAD_CONFIG_URL
-ENV REACT_APP_ALPHA_VANTAGE_API_KEY=$REACT_APP_ALPHA_VANTAGE_API_KEY
-ENV REACT_APP_FMP_API_KEY=$REACT_APP_FMP_API_KEY
-
-# Copy package files
-COPY package.json package-lock.json ./
-
-# Install dependencies
-RUN npm ci --legacy-peer-deps
-
-# Copy source code
-COPY . .
-
-# Build the app
-RUN npm run build
-
-# Production stage - ARM64 for K8s cluster
 FROM nginx:alpine
 
-# Copy built assets from build stage
-COPY --from=build /app/build /usr/share/nginx/html
+# Copy pre-built assets from GitHub Actions build
+COPY build /usr/share/nginx/html
 
 # Copy custom nginx config for SPA routing
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port 80
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
