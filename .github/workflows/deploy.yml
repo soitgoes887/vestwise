@@ -1,8 +1,8 @@
 name: Build and Deploy
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       image_tag:
@@ -15,9 +15,27 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # Skip deployment for commits that only touch PR validation workflow or docs
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      !contains(github.event.head_commit.message, '[skip deploy]')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            # Auto-generate version: YYYY.MM.DD-short_sha
+            DATE=$(date +'%Y.%m.%d')
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            echo "tag=${DATE}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,7 +45,7 @@ jobs:
       - name: Install dependencies
         run: |
           corepack enable
-          yarn install --frozen-lockfile || yarn install
+          yarn install
 
       - name: Build React app
         env:
@@ -48,17 +66,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Get version from release or input
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            VERSION="${{ github.event.release.tag_name }}"
-            VERSION="${VERSION#v}"
-            echo "tag=${VERSION}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
-          fi
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -104,3 +111,19 @@ jobs:
       - name: Verify deployment
         run: |
           kubectl rollout status deployment/vestwise -n vestwise --timeout=120s
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.tag }}
+          name: v${{ steps.version.outputs.tag }}
+          body: |
+            Automated release from commit ${{ github.sha }}
+
+            **Changes:** ${{ github.event.head_commit.message }}
+
+            **Docker Image:** `${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}`
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
