@@ -76,7 +76,7 @@ jobs:
 
       - name: Install infrastructure dependencies
         working-directory: infrastructure
-        run: npm install --legacy-peer-deps
+        run: yarn install
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
