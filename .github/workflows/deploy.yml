@@ -1,14 +1,13 @@
 name: Build and Deploy
 
 on:
-  push:
-    branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Docker image tag'
-        required: false
-        default: ''
+        description: 'Docker image tag (e.g., 1.4)'
+        required: true
 
 env:
   DOCKER_IMAGE: anicu/vestwise
@@ -32,13 +31,16 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Generate image tag
-        id: tag
+      - name: Get version from release or input
+        id: version
         run: |
-          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
-            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "release" ]; then
+            # Remove 'v' prefix if present (v1.4 -> 1.4)
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+            echo "tag=${VERSION}" >> $GITHUB_OUTPUT
           else
-            echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and push Docker image
@@ -48,15 +50,14 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: |
-            ${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }}
+            ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}
             ${{ env.DOCKER_IMAGE }}:latest
           build-args: |
             REACT_APP_SAVE_CONFIG_URL=${{ secrets.REACT_APP_SAVE_CONFIG_URL }}
             REACT_APP_LOAD_CONFIG_URL=${{ secrets.REACT_APP_LOAD_CONFIG_URL }}
             REACT_APP_ALPHA_VANTAGE_API_KEY=${{ secrets.REACT_APP_ALPHA_VANTAGE_API_KEY }}
             REACT_APP_FMP_API_KEY=${{ secrets.REACT_APP_FMP_API_KEY }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          no-cache: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -92,7 +93,7 @@ jobs:
         run: |
           pulumi login s3://vestwise-pulumi-state
           pulumi stack select vestwise-dev
-          pulumi config set image ${{ env.DOCKER_IMAGE }}:${{ steps.tag.outputs.tag }}
+          pulumi config set image ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}
           pulumi up --yes
 
       - name: Verify deployment

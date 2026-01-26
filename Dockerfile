@@ -16,10 +16,11 @@ ENV REACT_APP_ALPHA_VANTAGE_API_KEY=$REACT_APP_ALPHA_VANTAGE_API_KEY
 ENV REACT_APP_FMP_API_KEY=$REACT_APP_FMP_API_KEY
 
 # Copy package files
-COPY package*.json ./
+COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci --legacy-peer-deps && \
+    ls -la node_modules/.bin/ | head -10
 
 # Copy source code
 COPY . .
