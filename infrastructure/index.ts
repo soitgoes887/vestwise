@@ -1,6 +1,14 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 
+// Import Kubernetes resources
+import * as k8s from "./kubernetes";
+
+// Configure AWS provider with explicit region
+const awsProvider = new aws.Provider("aws-provider", {
+    region: "eu-west-2",
+});
+
 // Get AWS account ID for budget alerts
 const accountId = pulumi.output(aws.getCallerIdentity({})).accountId;
 
@@ -23,7 +31,7 @@ const configBucket = new aws.s3.Bucket("vestwise-configs", {
             days: 365, // Auto-delete old configs after 1 year
         },
     }],
-});
+}, { provider: awsProvider });
 
 // SNS topic for billing alerts
 const billingAlertTopic = new aws.sns.Topic("vestwise-billing-alerts", {
@@ -31,14 +39,14 @@ const billingAlertTopic = new aws.sns.Topic("vestwise-billing-alerts", {
     tags: {
         site: "vestwise",
     },
-});
+}, { provider: awsProvider });
 
 // SNS topic subscription (replace with your email)
 const billingAlertSubscription = new aws.sns.TopicSubscription("vestwise-billing-alert-email", {
     topic: billingAlertTopic.arn,
     protocol: "email",
     endpoint: "hello@vestwise.co.uk",
-});
+}, { provider: awsProvider });
 
 // Budget alert for AWS costs
 const monthlyBudget = new aws.budgets.Budget("vestwise-monthly-budget", {
@@ -59,7 +67,7 @@ const monthlyBudget = new aws.budgets.Budget("vestwise-monthly-budget", {
         notificationType: "ACTUAL",
         subscriberSnsTopicArns: [billingAlertTopic.arn],
     }],
-});
+}, { provider: awsProvider });
 
 // IAM role for Lambda
 const lambdaRole = new aws.iam.Role("vestwise-lambda-role", {
@@ -74,13 +82,13 @@ const lambdaRole = new aws.iam.Role("vestwise-lambda-role", {
     tags: {
         site: "vestwise",
     },
-});
+}, { provider: awsProvider });
 
 // Attach basic execution policy
 new aws.iam.RolePolicyAttachment("lambda-basic", {
     role: lambdaRole,
     policyArn: "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-});
+}, { provider: awsProvider });
 
 // S3 access policy
 new aws.iam.RolePolicy("lambda-s3-policy", {
@@ -93,11 +101,12 @@ new aws.iam.RolePolicy("lambda-s3-policy", {
             Resource: `${bucketArn}/*`,
         }],
     })),
-});
+}, { provider: awsProvider });
 
 // Save config Lambda
 const saveConfigLambda = new aws.lambda.Function("save-config", {
-    runtime: "nodejs20.x",
+    runtime: "nodejs22.x",
+    architectures: ["arm64"],
     role: lambdaRole.arn,
     handler: "index.handler",
     code: new pulumi.asset.AssetArchive({
@@ -112,11 +121,12 @@ const saveConfigLambda = new aws.lambda.Function("save-config", {
     tags: {
         site: "vestwise",
     },
-});
+}, { provider: awsProvider });
 
 // Load config Lambda
 const loadConfigLambda = new aws.lambda.Function("load-config", {
-    runtime: "nodejs20.x",
+    runtime: "nodejs22.x",
+    architectures: ["arm64"],
     role: lambdaRole.arn,
     handler: "index.handler",
     code: new pulumi.asset.AssetArchive({
@@ -131,7 +141,7 @@ const loadConfigLambda = new aws.lambda.Function("load-config", {
     tags: {
         site: "vestwise",
     },
-});
+}, { provider: awsProvider });
 
 // Lambda Function URLs (free, no API Gateway needed)
 const saveFunctionUrl = new aws.lambda.FunctionUrl("save-url", {
@@ -143,7 +153,7 @@ const saveFunctionUrl = new aws.lambda.FunctionUrl("save-url", {
         allowHeaders: ["content-type"],
         maxAge: 86400, // Cache preflight for 24 hours
     },
-});
+}, { provider: awsProvider });
 
 const loadFunctionUrl = new aws.lambda.FunctionUrl("load-url", {
     functionName: loadConfigLambda.name,
@@ -154,10 +164,17 @@ const loadFunctionUrl = new aws.lambda.FunctionUrl("load-url", {
         allowHeaders: ["content-type"],
         maxAge: 86400, // Cache preflight for 24 hours
     },
-});
+}, { provider: awsProvider });
 
 // Outputs
 export const bucketName = configBucket.bucket;
 export const saveUrl = saveFunctionUrl.functionUrl;
 export const loadUrl = loadFunctionUrl.functionUrl;
 export const billingAlertTopicArn = billingAlertTopic.arn;
+
+// Kubernetes outputs
+export const k8sNamespace = k8s.k8sNamespace;
+export const k8sDeployment = k8s.k8sDeployment;
+export const k8sImage = k8s.k8sImage;
+export const k8sReplicas = k8s.k8sReplicas;
+export const k8sUrl = k8s.k8sUrl;
