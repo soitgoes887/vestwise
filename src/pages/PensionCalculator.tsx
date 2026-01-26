@@ -967,7 +967,7 @@ const PensionCalculator: React.FC = () => {
                         tick={{ fill: '#6b7280' }}
                       />
                       <Tooltip
-                        formatter={(value: number) => `£${value.toLocaleString()}`}
+                        formatter={(value) => `£${(value as number)?.toLocaleString() ?? 0}`}
                         labelFormatter={(label) => `Age ${label}`}
                         contentStyle={{
                           backgroundColor: '#1f2937',
