@@ -177,6 +177,13 @@ const RSUESPPCalculator = () => {
 
   const handleAddGrant = () => {
     if (newGrant.grantDate && newGrant.vestStartDate && newGrant.totalShares && newGrant.grantPrice) {
+      // Validate that vest start date is not before grant date
+      const grantDate = new Date(newGrant.grantDate);
+      const vestStartDate = new Date(newGrant.vestStartDate);
+      if (vestStartDate < grantDate) {
+        alert('Vest start date cannot be before grant date');
+        return;
+      }
       setRsuGrants([...rsuGrants, {
         id: Date.now().toString(),
         grantDate: newGrant.grantDate,
@@ -305,7 +312,8 @@ const RSUESPPCalculator = () => {
 
   const calculations = useMemo(() => {
     const years = Array.from({ length: params.projectionYears }, (_, i) => i + 1);
-    const currentYear = new Date().getFullYear();
+    const now = new Date();
+    const currentYear = now.getFullYear();
 
     interface ResultData {
       year: number;
@@ -363,7 +371,7 @@ const RSUESPPCalculator = () => {
     });
 
     years.forEach(year => {
-      const targetDate = new Date('2025-10-13');
+      const targetDate = new Date(now);
       targetDate.setFullYear(targetDate.getFullYear() + year);
 
       let rsuSharesVested = 0;
@@ -372,7 +380,7 @@ const RSUESPPCalculator = () => {
 
       vestingSchedule.forEach(vest => {
         if (vest.date <= targetDate) {
-          const monthsSinceNow = (vest.date.getTime() - new Date('2025-10-13').getTime()) / (1000 * 60 * 60 * 24 * 30);
+          const monthsSinceNow = (vest.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
           const stockPriceAtVest = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, monthsSinceNow / 12);
 
           const grossValue = vest.shares * stockPriceAtVest;
