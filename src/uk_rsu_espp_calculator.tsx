@@ -371,8 +371,9 @@ const RSUESPPCalculator = () => {
     });
 
     years.forEach(year => {
-      const targetDate = new Date(now);
-      targetDate.setFullYear(targetDate.getFullYear() + year);
+      // Use end of displayed year (Dec 31) as target date for consistency
+      const displayYearNum = currentYear + year - 1;
+      const targetDate = new Date(displayYearNum, 11, 31, 23, 59, 59); // Dec 31 of display year
 
       let rsuSharesVested = 0;
       let totalTaxesPaid = 0;
@@ -404,65 +405,63 @@ const RSUESPPCalculator = () => {
       let esppMarketValueAtPurchase = 0; // Track market value for CGT cost basis
 
       if (esppConfig.enabled) {
-        const monthsInYear = year * 12;
-        const purchasePeriods = Math.floor(monthsInYear / esppConfig.purchasePeriod);
+        // Use actual calendar dates for ESPP purchases
+        const esppStartDate = esppConfig.hasStartDate && esppConfig.startDate
+          ? new Date(esppConfig.startDate)
+          : new Date(now);
 
-        // Calculate months from now to ESPP start date (if enabled)
-        let esppStartMonthOffset = 0;
-        if (esppConfig.hasStartDate && esppConfig.startDate) {
-          const now = new Date();
-          const esppStartDate = new Date(esppConfig.startDate);
-          const monthsDiff = (esppStartDate.getFullYear() - now.getFullYear()) * 12 +
-                            (esppStartDate.getMonth() - now.getMonth());
-          esppStartMonthOffset = Math.max(0, monthsDiff);
-        }
+        // Generate purchase dates based on ESPP start + purchase period intervals
+        let purchaseDate = new Date(esppStartDate);
+        purchaseDate.setMonth(purchaseDate.getMonth() + esppConfig.purchasePeriod);
 
-        for (let period = 1; period <= purchasePeriods; period++) {
-          const periodEndMonth = period * esppConfig.purchasePeriod;
-          const periodStartMonth = (period - 1) * esppConfig.purchasePeriod;
+        while (purchaseDate <= targetDate) {
+          // Calculate contribution period: from (purchaseDate - purchasePeriod) to purchaseDate
+          const periodStartDate = new Date(purchaseDate);
+          periodStartDate.setMonth(periodStartDate.getMonth() - esppConfig.purchasePeriod);
 
-          // Skip periods before ESPP start date
-          if (periodEndMonth <= esppStartMonthOffset) {
-            continue;
-          }
-
+          // Calculate contribution for this period
           let periodContribution = 0;
-          for (let month = periodStartMonth; month < periodEndMonth; month++) {
-            // Skip months before ESPP start
-            if (month < esppStartMonthOffset) {
-              continue;
-            }
+          const contributionDate = new Date(periodStartDate);
 
-            const yearFraction = month / 12;
+          for (let m = 0; m < esppConfig.purchasePeriod; m++) {
+            // Calculate years from ESPP start for contribution growth
+            const monthsFromStart = (contributionDate.getFullYear() - esppStartDate.getFullYear()) * 12 +
+                                   (contributionDate.getMonth() - esppStartDate.getMonth());
+            const yearFraction = Math.max(0, monthsFromStart) / 12;
             const monthlyContribution = esppConfig.monthlyContribution * Math.pow(1 + esppConfig.contributionGrowth / 100, yearFraction);
             periodContribution += monthlyContribution;
+            contributionDate.setMonth(contributionDate.getMonth() + 1);
           }
 
-          // Skip if no contribution in this period
-          if (periodContribution === 0) {
-            continue;
-          }
+          // Calculate stock prices at period start and end relative to now
+          const monthsToStartFromNow = (periodStartDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
+          const monthsToEndFromNow = (purchaseDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
 
-          const stockPriceAtPeriodStart = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, periodStartMonth / 12);
-          const stockPriceAtPeriodEnd = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, periodEndMonth / 12);
+          const stockPriceAtPeriodStart = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, monthsToStartFromNow / 12);
+          const stockPriceAtPeriodEnd = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, monthsToEndFromNow / 12);
 
           const marketPrice = Math.min(stockPriceAtPeriodStart, stockPriceAtPeriodEnd);
           const purchasePrice = marketPrice * (1 - esppConfig.discount / 100);
           const sharesPurchased = periodContribution / purchasePrice;
 
           // UK Tax: Discount is taxed as employment income at purchase
-          const discountValueUsd = sharesPurchased * (marketPrice - purchasePrice);
-          const incomeTaxOnDiscount = discountValueUsd * (params.incomeTaxRate / 100);
-          const niOnDiscount = discountValueUsd * (params.niRate / 100);
+          const discountValue = sharesPurchased * (marketPrice - purchasePrice);
+          const incomeTaxOnDiscount = discountValue * (params.incomeTaxRate / 100);
+          const niOnDiscount = discountValue * (params.niRate / 100);
 
           esppShares += sharesPurchased;
           esppInvested += periodContribution;
           esppMarketValueAtPurchase += sharesPurchased * marketPrice;
           totalTaxesPaid += incomeTaxOnDiscount + niOnDiscount;
+
+          // Move to next purchase date
+          purchaseDate.setMonth(purchaseDate.getMonth() + esppConfig.purchasePeriod);
         }
       }
 
-      const currentStockPrice = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, year);
+      // Calculate stock price at end of display year
+      const monthsToTargetFromNow = (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
+      const currentStockPrice = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, monthsToTargetFromNow / 12);
       const totalShares = rsuSharesVested + esppShares;
       const totalValue = totalShares * currentStockPrice;
       const rsuValue = rsuSharesVested * currentStockPrice;
@@ -474,22 +473,24 @@ const RSUESPPCalculator = () => {
       if (params.useSpouseISA) annualISAAllowance += params.spouseISAAllowance;
 
       // Add ISA contribution for this year (transfer shares worth up to allowance)
-      const totalValueGbp = totalValue / params.usdToGbp;
+      // If baseCurrency is GBP, totalValue is already in GBP; if USD, convert
+      const totalValueGbp = baseCurrency === 'GBP' ? totalValue : totalValue / params.usdToGbp;
       const isaContributionThisYear = Math.min(annualISAAllowance, Math.max(0, totalValueGbp - cumulativeISAValueGbp));
       cumulativeISAValueGbp += isaContributionThisYear;
 
       // Calculate capital gains if selling all shares
       // RSUs: Cost basis equals market value at vesting (already taxed as income)
       // Capital gain = current value - vesting value
-      const rsuCapitalGainUsd = Math.max(0, rsuValue - rsuCostBasisUsd);
+      const rsuCapitalGain = Math.max(0, rsuValue - rsuCostBasisUsd);
 
       // ESPP: Cost basis is market value at purchase (discount already taxed as income)
-      const esppCostBasisUsd = esppMarketValueAtPurchase;
-      const esppCapitalGainUsd = Math.max(0, esppValue - esppCostBasisUsd);
+      const esppCostBasis = esppMarketValueAtPurchase;
+      const esppCapitalGain = Math.max(0, esppValue - esppCostBasis);
 
-      // Total capital gains
-      const capitalGainUsd = rsuCapitalGainUsd + esppCapitalGainUsd;
-      const capitalGainGbp = capitalGainUsd / params.usdToGbp;
+      // Total capital gains (in baseCurrency)
+      const capitalGain = rsuCapitalGain + esppCapitalGain;
+      // Convert to GBP for UK CGT calculation
+      const capitalGainGbp = baseCurrency === 'GBP' ? capitalGain : capitalGain / params.usdToGbp;
 
       // Apply ISA protection: ISA-protected shares have no CGT
       // Assume ISA is filled proportionally with all shares (RSU + ESPP)
@@ -499,8 +500,8 @@ const RSUESPPCalculator = () => {
 
       const taxableGain = Math.max(0, nonISACapitalGain - params.cgtAllowance);
       const cgtTax = taxableGain * (params.cgtRate / 100);
-      const netProceedsAfterCgtGbp = (totalValue / params.usdToGbp) - cgtTax;
-      const netProceedsAfterCgtUsd = totalValue - (cgtTax * params.usdToGbp);
+      const netProceedsAfterCgtGbp = totalValueGbp - cgtTax;
+      const netProceedsAfterCgtUsd = baseCurrency === 'USD' ? totalValue - cgtTax * params.usdToGbp : totalValue * params.usdToGbp - cgtTax * params.usdToGbp;
 
       results.push({
         year,
@@ -511,9 +512,9 @@ const RSUESPPCalculator = () => {
         rsuValue: Math.round(rsuValue),
         esppValue: Math.round(esppValue),
         totalValue: Math.round(totalValue),
-        rsuValueGbp: Math.round(rsuValue / params.usdToGbp),
-        esppValueGbp: Math.round(esppValue / params.usdToGbp),
-        totalValueGbp: Math.round(totalValue / params.usdToGbp),
+        rsuValueGbp: Math.round(baseCurrency === 'GBP' ? rsuValue : rsuValue / params.usdToGbp),
+        esppValueGbp: Math.round(baseCurrency === 'GBP' ? esppValue : esppValue / params.usdToGbp),
+        totalValueGbp: Math.round(totalValueGbp),
         capitalGainGbp: Math.round(capitalGainGbp),
         cgtTax: Math.round(cgtTax),
         netProceedsAfterCgtGbp: Math.round(netProceedsAfterCgtGbp),
@@ -525,7 +526,7 @@ const RSUESPPCalculator = () => {
     });
 
     return results;
-  }, [params, rsuGrants, esppConfig]);
+  }, [params, rsuGrants, esppConfig, baseCurrency]);
 
   return (
     <div className="w-full p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -1170,7 +1171,7 @@ const RSUESPPCalculator = () => {
                 {calculations.map((row) => (
                   <tr key={row.year} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-center font-semibold text-gray-900 dark:text-white">{row.displayYear}</td>
-                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">${row.stockPrice}</td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">{baseCurrency === 'USD' ? '$' : '£'}{row.stockPrice}</td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">{row.rsuShares.toLocaleString()}</td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">{row.esppShares.toLocaleString()}</td>
                     <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-semibold text-gray-900 dark:text-white">{row.totalShares.toLocaleString()}</td>
