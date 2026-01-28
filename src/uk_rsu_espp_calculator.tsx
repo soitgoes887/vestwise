@@ -90,6 +90,25 @@ const RSUESPPCalculator = () => {
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [stockPriceInput, setStockPriceInput] = useState(params.currentStockPrice.toString());
 
+  // Derive stock's native currency from selected company
+  const stockNativeCurrency: 'USD' | 'GBP' = selectedCompany?.country === 'UK' ? 'GBP' : 'USD';
+
+  // Convert stock price to baseCurrency if needed
+  // params.currentStockPrice is always in the stock's native currency
+  const stockPriceInBaseCurrency = useMemo(() => {
+    if (stockNativeCurrency === baseCurrency) {
+      return params.currentStockPrice;
+    }
+    // Convert between currencies
+    if (stockNativeCurrency === 'USD' && baseCurrency === 'GBP') {
+      // USD to GBP: divide by exchange rate (assuming usdToGbp means 1 USD = X GBP)
+      return params.currentStockPrice / params.usdToGbp;
+    } else {
+      // GBP to USD: multiply by exchange rate
+      return params.currentStockPrice * params.usdToGbp;
+    }
+  }, [params.currentStockPrice, params.usdToGbp, stockNativeCurrency, baseCurrency]);
+
   // Fetch exchange rate on component mount
   useEffect(() => {
     fetchExchangeRate();
@@ -382,7 +401,7 @@ const RSUESPPCalculator = () => {
       vestingSchedule.forEach(vest => {
         if (vest.date <= targetDate) {
           const monthsSinceNow = (vest.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
-          const stockPriceAtVest = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, monthsSinceNow / 12);
+          const stockPriceAtVest = stockPriceInBaseCurrency * Math.pow(1 + params.annualStockGrowth / 100, monthsSinceNow / 12);
 
           const grossValue = vest.shares * stockPriceAtVest;
           const incomeTax = grossValue * (params.incomeTaxRate / 100);
@@ -437,8 +456,8 @@ const RSUESPPCalculator = () => {
           const monthsToStartFromNow = (periodStartDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
           const monthsToEndFromNow = (purchaseDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
 
-          const stockPriceAtPeriodStart = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, monthsToStartFromNow / 12);
-          const stockPriceAtPeriodEnd = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, monthsToEndFromNow / 12);
+          const stockPriceAtPeriodStart = stockPriceInBaseCurrency * Math.pow(1 + params.annualStockGrowth / 100, monthsToStartFromNow / 12);
+          const stockPriceAtPeriodEnd = stockPriceInBaseCurrency * Math.pow(1 + params.annualStockGrowth / 100, monthsToEndFromNow / 12);
 
           const marketPrice = Math.min(stockPriceAtPeriodStart, stockPriceAtPeriodEnd);
           const purchasePrice = marketPrice * (1 - esppConfig.discount / 100);
@@ -461,7 +480,7 @@ const RSUESPPCalculator = () => {
 
       // Calculate stock price at end of display year
       const monthsToTargetFromNow = (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
-      const currentStockPrice = params.currentStockPrice * Math.pow(1 + params.annualStockGrowth / 100, monthsToTargetFromNow / 12);
+      const currentStockPrice = stockPriceInBaseCurrency * Math.pow(1 + params.annualStockGrowth / 100, monthsToTargetFromNow / 12);
       const totalShares = rsuSharesVested + esppShares;
       const totalValue = totalShares * currentStockPrice;
       const rsuValue = rsuSharesVested * currentStockPrice;
@@ -526,7 +545,7 @@ const RSUESPPCalculator = () => {
     });
 
     return results;
-  }, [params, rsuGrants, esppConfig, baseCurrency]);
+  }, [params, rsuGrants, esppConfig, baseCurrency, stockPriceInBaseCurrency]);
 
   return (
     <div className="w-full p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -831,21 +850,30 @@ const RSUESPPCalculator = () => {
                 </div>
                 <input
                   type="number"
-                  value={stockPriceInput}
+                  value={Math.round(stockPriceInBaseCurrency * 100) / 100}
                   onChange={(e) => {
                     const value = e.target.value;
                     setStockPriceInput(value);
                     // Update params only if it's a valid number
+                    // Convert from baseCurrency to native currency if needed
                     if (value !== '' && !isNaN(Number(value))) {
-                      setParams({...params, currentStockPrice: Number(value)});
+                      let nativePrice = Number(value);
+                      if (stockNativeCurrency !== baseCurrency) {
+                        if (baseCurrency === 'GBP' && stockNativeCurrency === 'USD') {
+                          // User entered GBP, convert to USD for storage
+                          nativePrice = nativePrice * params.usdToGbp;
+                        } else {
+                          // User entered USD, convert to GBP for storage
+                          nativePrice = nativePrice / params.usdToGbp;
+                        }
+                      }
+                      setParams({...params, currentStockPrice: nativePrice});
                     }
                   }}
                   onBlur={() => {
-                    // On blur, if empty, reset to previous value
+                    // On blur, if empty, reset to converted value
                     if (stockPriceInput === '' || isNaN(Number(stockPriceInput))) {
-                      setStockPriceInput(params.currentStockPrice.toString());
-                    } else {
-                      setParams({...params, currentStockPrice: Number(stockPriceInput)});
+                      setStockPriceInput((Math.round(stockPriceInBaseCurrency * 100) / 100).toString());
                     }
                   }}
                   onFocus={(e) => {
@@ -855,6 +883,12 @@ const RSUESPPCalculator = () => {
                   placeholder="Enter stock price"
                   className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
+                {stockNativeCurrency !== baseCurrency && selectedCompany && (
+                  <div className="mt-1 text-xs text-purple-600 dark:text-purple-400">
+                    Native price: {stockNativeCurrency === 'USD' ? '$' : '£'}{params.currentStockPrice.toFixed(2)} {stockNativeCurrency}
+                    {' → '}{baseCurrency === 'USD' ? '$' : '£'}{(Math.round(stockPriceInBaseCurrency * 100) / 100).toFixed(2)} {baseCurrency}
+                  </div>
+                )}
                 {stockPriceData && !stockPriceError && (
                   <div className="mt-1 space-y-1">
                     <div className="text-xs text-blue-700 dark:text-blue-400">
