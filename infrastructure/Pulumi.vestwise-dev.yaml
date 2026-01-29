@@ -1,4 +1,5 @@
 encryptionsalt: v1:s/LQxugX4jc=:v1:/QtZGeJWHiPM9g0r:DiRtucJXnwY3d/roP85eH5fPSorHYQ==
 config:
-  vestwise-infrastructure:image: anicu/vestwise:1.3
-  vestwise-infrastructure:replicas: "3"
+  vestwise-infrastructure:image: anicu/vestwise:latest
+  vestwise-infrastructure:replicas: "2"
+  vestwise-infrastructure:kubeconfigContext: kubernetes-admin@kubernetes
