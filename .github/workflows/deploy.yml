@@ -81,7 +81,9 @@ jobs:
 
       - name: Install infrastructure dependencies
         working-directory: infrastructure
-        run: npm install
+        run: |
+          npm install
+          npx pulumi install
 
       - name: Setup kubeconfig
         run: |
