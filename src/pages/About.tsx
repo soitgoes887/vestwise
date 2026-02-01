@@ -9,8 +9,8 @@ const About: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 mb-8">
           <h2 className="text-2xl font-semibold text-indigo-600 dark:text-indigo-400 mb-4 text-left">Our Mission</h2>
           <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4 text-left">
-            Vestwise was created to help UK-based employees understand and optimize their equity compensation packages and pension planning.
-            We believe that everyone should have access to clear, accurate projections of their RSU and ESPP investments, as well as their retirement savings.
+            Vestwise was created to help UK-based employees understand and optimize their total compensation packages and pension planning.
+            We believe that everyone should have access to clear, accurate projections of their salary, bonus, RSU and ESPP investments, as well as their retirement savings.
           </p>
           <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-left">
             Equity compensation and pension planning can be complex, especially when dealing with international companies, currency conversions,
@@ -21,6 +21,13 @@ const About: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 mb-8">
           <h2 className="text-2xl font-semibold text-indigo-600 dark:text-indigo-400 mb-4 text-left">What We Offer</h2>
           <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 text-left">Total Compensation</h3>
+              <p className="text-gray-700 dark:text-gray-300 text-left">
+                Track your complete package including base salary, bonus, and car allowance alongside your equity compensation.
+                See your total compensation grow over time with annual growth projections.
+              </p>
+            </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 text-left">RSU Management</h3>
               <p className="text-gray-700 dark:text-gray-300 text-left">
@@ -52,8 +59,8 @@ const About: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 text-left">Visual Insights</h3>
               <p className="text-gray-700 dark:text-gray-300 text-left">
-                Interactive charts and detailed tables help you visualize your equity growth and pension accumulation.
-                Understand the potential value of your compensation and retirement savings over time.
+                Interactive charts and detailed tables help you visualize your compensation and pension growth.
+                Understand the potential value of your total package and retirement savings over time.
               </p>
             </div>
           </div>
@@ -62,12 +69,14 @@ const About: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 mb-8">
           <h2 className="text-2xl font-semibold text-indigo-600 dark:text-indigo-400 mb-4 text-left">Key Assumptions</h2>
           <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 text-left">RSU & ESPP Calculator</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 text-left">Total Compensation Calculator</h3>
             <ul className="list-disc list-outside ml-5 space-y-2 text-gray-700 dark:text-gray-300 text-left">
+              <li>Base salary, bonus, and car allowance with configurable annual growth rates</li>
+              <li>All cash compensation shown after income tax deductions</li>
               <li>Sell-to-cover method for RSU tax withholding at vesting</li>
               <li>Income Tax and National Insurance calculated on RSU value at vesting</li>
               <li>Capital Gains Tax applies to shares based on appreciation from cost basis</li>
-              <li>All RSU values in USD or GBP; ESPP contributions in GBP</li>
+              <li>All values in USD or GBP; ESPP contributions in GBP</li>
               <li>Customizable stock growth rates and exchange rates</li>
               <li>Flexible projection timeline with detailed year-by-year breakdown</li>
             </ul>

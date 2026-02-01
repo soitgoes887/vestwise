@@ -47,7 +47,7 @@ const Header: React.FC = () => {
                   : 'text-indigo-100 dark:text-indigo-200 hover:text-white'
               }`}
             >
-              RSU/ESPP
+              Total Comp
             </Link>
             <Link
               to="/pension"

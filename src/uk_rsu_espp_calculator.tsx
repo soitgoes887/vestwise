@@ -69,6 +69,30 @@ const RSUESPPCalculator = () => {
     startDate: ''
   });
 
+  // Compensation state
+  const [baseSalaryConfig, setBaseSalaryConfig] = useState({
+    enabled: false,
+    amount: 130000,
+    growthRate: 3,
+  });
+  const [showBaseSalary, setShowBaseSalary] = useState(false);
+  const [tempBaseSalary, setTempBaseSalary] = useState({ amount: '130000', growthRate: '3' });
+
+  const [bonusConfig, setBonusConfig] = useState({
+    enabled: false,
+    percentage: 12,
+  });
+  const [showBonus, setShowBonus] = useState(false);
+  const [tempBonus, setTempBonus] = useState({ percentage: '12' });
+
+  const [carAllowanceConfig, setCarAllowanceConfig] = useState({
+    enabled: false,
+    amount: 8000,
+    growthRate: 2,
+  });
+  const [showCarAllowance, setShowCarAllowance] = useState(false);
+  const [tempCarAllowance, setTempCarAllowance] = useState({ amount: '8000', growthRate: '2' });
+
   // Save/Load configuration state
   const [configUuid, setConfigUuid] = useState('');
   const [loadUuid, setLoadUuid] = useState('');
@@ -240,6 +264,32 @@ const RSUESPPCalculator = () => {
     });
   };
 
+  const handleSaveBaseSalary = () => {
+    setBaseSalaryConfig({
+      enabled: true,
+      amount: Number(tempBaseSalary.amount),
+      growthRate: Number(tempBaseSalary.growthRate),
+    });
+    setShowBaseSalary(false);
+  };
+
+  const handleSaveBonus = () => {
+    setBonusConfig({
+      enabled: true,
+      percentage: Number(tempBonus.percentage),
+    });
+    setShowBonus(false);
+  };
+
+  const handleSaveCarAllowance = () => {
+    setCarAllowanceConfig({
+      enabled: true,
+      amount: Number(tempCarAllowance.amount),
+      growthRate: Number(tempCarAllowance.growthRate),
+    });
+    setShowCarAllowance(false);
+  };
+
   const handleSaveConfiguration = async () => {
     try {
       const uuid = configUuid || generateReadableUUID();
@@ -346,6 +396,8 @@ const RSUESPPCalculator = () => {
       rsuValueGbp: number;
       esppValueGbp: number;
       totalValueGbp: number;
+      yearlyIncome: number;
+      yearlyIncomeGbp: number;
       capitalGainGbp: number;
       cgtTax: number;
       netProceedsAfterCgtGbp: number;
@@ -353,6 +405,12 @@ const RSUESPPCalculator = () => {
       stockPrice: number;
       esppInvested: number;
       totalTaxesPaid: number;
+      // Compensation fields
+      baseSalary: number;
+      bonus: number;
+      carAllowance: number;
+      totalCash: number;
+      totalComp: number;
     }
 
     const results: ResultData[] = [];
@@ -522,6 +580,35 @@ const RSUESPPCalculator = () => {
       const netProceedsAfterCgtGbp = totalValueGbp - cgtTax;
       const netProceedsAfterCgtUsd = baseCurrency === 'USD' ? totalValue - cgtTax * params.usdToGbp : totalValue * params.usdToGbp - cgtTax * params.usdToGbp;
 
+      // Calculate yearly income (difference from previous year)
+      const previousYearValue = results.length > 0 ? results[results.length - 1].totalValue : 0;
+      const previousYearValueGbp = results.length > 0 ? results[results.length - 1].totalValueGbp : 0;
+      const yearlyIncome = Math.round(totalValue - previousYearValue);
+      const yearlyIncomeGbp = Math.round(totalValueGbp - previousYearValueGbp);
+
+      // Calculate compensation components
+      const yearIndex = year - 1; // 0-indexed for growth calculation
+      const baseSalaryGross = baseSalaryConfig.enabled
+        ? Math.round(baseSalaryConfig.amount * Math.pow(1 + baseSalaryConfig.growthRate / 100, yearIndex))
+        : 0;
+      const bonusGross = bonusConfig.enabled && baseSalaryConfig.enabled
+        ? Math.round(baseSalaryGross * (bonusConfig.percentage / 100))
+        : 0;
+      const carAllowanceGross = carAllowanceConfig.enabled
+        ? Math.round(carAllowanceConfig.amount * Math.pow(1 + carAllowanceConfig.growthRate / 100, yearIndex))
+        : 0;
+
+      // Apply income tax to get net values (same as RSU/ESPP)
+      const incomeTaxRate = params.incomeTaxRate / 100;
+      const baseSalary = Math.round(baseSalaryGross * (1 - incomeTaxRate));
+      const bonusAmount = Math.round(bonusGross * (1 - incomeTaxRate));
+      const carAllowance = Math.round(carAllowanceGross * (1 - incomeTaxRate));
+
+      const totalCash = baseSalary + bonusAmount + carAllowance;
+      // Total comp includes cash plus the yearly RSU/ESPP income (in the chosen currency)
+      const yearlyStockIncome = baseCurrency === 'GBP' ? yearlyIncomeGbp : yearlyIncome;
+      const totalComp = totalCash + yearlyStockIncome;
+
       results.push({
         year,
         displayYear: `${currentYear + year - 1}`,
@@ -534,126 +621,215 @@ const RSUESPPCalculator = () => {
         rsuValueGbp: Math.round(baseCurrency === 'GBP' ? rsuValue : rsuValue / params.usdToGbp),
         esppValueGbp: Math.round(baseCurrency === 'GBP' ? esppValue : esppValue / params.usdToGbp),
         totalValueGbp: Math.round(totalValueGbp),
+        yearlyIncome,
+        yearlyIncomeGbp,
         capitalGainGbp: Math.round(capitalGainGbp),
         cgtTax: Math.round(cgtTax),
         netProceedsAfterCgtGbp: Math.round(netProceedsAfterCgtGbp),
         netProceedsAfterCgtUsd: Math.round(netProceedsAfterCgtUsd),
         stockPrice: Math.round(currentStockPrice * 100) / 100,
         esppInvested: Math.round(esppInvested),
-        totalTaxesPaid: Math.round(totalTaxesPaid)
+        totalTaxesPaid: Math.round(totalTaxesPaid),
+        baseSalary,
+        bonus: bonusAmount,
+        carAllowance,
+        totalCash,
+        totalComp,
       });
     });
 
     return results;
-  }, [params, rsuGrants, esppConfig, baseCurrency, stockPriceInBaseCurrency]);
+  }, [params, rsuGrants, esppConfig, baseCurrency, stockPriceInBaseCurrency, baseSalaryConfig, bonusConfig, carAllowanceConfig]);
 
   return (
     <div className="w-full p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-gray-800 dark:text-white">RSU & ESPP Calculator</h1>
+      <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-gray-800 dark:text-white">Total Compensation Calculator</h1>
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left side - Input panels */}
         <div className="w-full lg:w-96 lg:flex-shrink-0 space-y-6">
-          <div className="bg-indigo-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-indigo-200 dark:border-indigo-600">
-            <h2 className="text-xl font-semibold text-indigo-900 dark:text-white mb-3">RSU Grants</h2>
-
-            {rsuGrants.length > 0 && (
-              <div className="space-y-2 mb-3">
-                {rsuGrants.map((grant) => (
-                  <div key={grant.id} className="bg-white dark:bg-gray-700 p-3 rounded border border-indigo-200 dark:border-indigo-600">
-                    <div className="flex justify-between items-start">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        <div><strong>Shares:</strong> {grant.totalShares}</div>
-                        <div><strong>Grant Price:</strong> ${grant.grantPrice}</div>
-                        <div><strong>Grant Date:</strong> {grant.grantDate}</div>
-                        <div><strong>Vest Start:</strong> {grant.vestStartDate}</div>
-                        <div><strong>Schedule:</strong> {getVestingScheduleLabel(grant.vestingSchedule)}</div>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveGrant(grant.id)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-xl font-bold"
-                      >
-                        ×
-                      </button>
-                    </div>
+          {/* Base Salary */}
+          <div className="bg-teal-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-teal-200 dark:border-teal-600">
+            <h2 className="text-xl font-semibold text-teal-900 dark:text-white mb-3">Base Salary</h2>
+            {baseSalaryConfig.enabled && (
+              <div className="mb-3 bg-white dark:bg-gray-700 p-3 rounded border border-teal-200 dark:border-teal-600">
+                <div className="flex justify-between items-start">
+                  <div className="text-sm text-gray-900 dark:text-white">
+                    <div><strong>Amount:</strong> {baseCurrency === 'GBP' ? '£' : '$'}{baseSalaryConfig.amount.toLocaleString()}</div>
+                    <div><strong>Growth:</strong> {baseSalaryConfig.growthRate}%/year</div>
                   </div>
-                ))}
+                  <button
+                    onClick={() => setBaseSalaryConfig({ ...baseSalaryConfig, enabled: false })}
+                    className="text-red-600 dark:text-red-400 hover:text-red-800 text-xl font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
             )}
-
             <button
-              onClick={() => setShowAddGrant(!showAddGrant)}
-              className="w-full px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
+              onClick={() => {
+                if (!showBaseSalary && baseSalaryConfig.enabled) {
+                  setTempBaseSalary({
+                    amount: baseSalaryConfig.amount.toString(),
+                    growthRate: baseSalaryConfig.growthRate.toString(),
+                  });
+                }
+                setShowBaseSalary(!showBaseSalary);
+              }}
+              className="w-full px-4 py-2 bg-teal-600 dark:bg-teal-500 text-white rounded font-semibold hover:bg-teal-700 dark:hover:bg-teal-600 transition-colors"
             >
-              {showAddGrant ? 'Cancel' : '+ Add RSU Grant'}
+              {showBaseSalary ? 'Cancel' : baseSalaryConfig.enabled ? 'Edit Salary' : '+ Add Base Salary'}
             </button>
-
-            {showAddGrant && (
-              <div className="mt-4 space-y-3 bg-white dark:bg-gray-700 p-3 rounded border border-indigo-300 dark:border-indigo-600">
+            {showBaseSalary && (
+              <div className="mt-4 space-y-3 bg-white dark:bg-gray-700 p-3 rounded border border-teal-300 dark:border-teal-600">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Grant Date</label>
-                  <input
-                    type="date"
-                    value={newGrant.grantDate}
-                    onChange={(e) => setNewGrant({...newGrant, grantDate: e.target.value})}
-                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Vest Start Date</label>
-                  <input
-                    type="date"
-                    value={newGrant.vestStartDate}
-                    onChange={(e) => setNewGrant({...newGrant, vestStartDate: e.target.value})}
-                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Total Shares</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Annual Salary ({baseCurrency === 'GBP' ? '£' : '$'})</label>
                   <input
                     type="number"
-                    value={newGrant.totalShares}
-                    onChange={(e) => setNewGrant({...newGrant, totalShares: e.target.value})}
+                    value={tempBaseSalary.amount}
+                    onChange={(e) => setTempBaseSalary({ ...tempBaseSalary, amount: e.target.value })}
                     className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                    placeholder="e.g., 1703"
+                    placeholder="e.g., 130000"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Share Price at Grant Date ($)</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Annual Growth Rate (%)</label>
                   <input
                     type="number"
-                    step="0.01"
-                    value={newGrant.grantPrice}
-                    onChange={(e) => setNewGrant({...newGrant, grantPrice: e.target.value})}
+                    value={tempBaseSalary.growthRate}
+                    onChange={(e) => setTempBaseSalary({ ...tempBaseSalary, growthRate: e.target.value })}
                     className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                    placeholder="e.g., 250"
+                    placeholder="e.g., 3"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Vesting Schedule</label>
-                  <select
-                    value={newGrant.vestingSchedule}
-                    onChange={(e) => setNewGrant({...newGrant, vestingSchedule: e.target.value})}
-                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                  >
-                    <option value="1y-cliff">1 Year Cliff (100% after 1 year)</option>
-                    <option value="3y-annual">3 Years Annual (3 periods)</option>
-                    <option value="3y-6m">3 Years Semi-Annual (6 periods)</option>
-                    <option value="4y-annual">4 Years Annual (4 periods)</option>
-                    <option value="4y-6m">4 Years Semi-Annual (8 periods)</option>
-                    <option value="4y-3m">4 Years Quarterly (16 periods)</option>
-                  </select>
                 </div>
                 <button
-                  onClick={handleAddGrant}
-                  className="w-full px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
+                  onClick={handleSaveBaseSalary}
+                  className="w-full px-4 py-2 bg-teal-600 dark:bg-teal-500 text-white rounded font-semibold hover:bg-teal-700 dark:hover:bg-teal-600 transition-colors"
                 >
-                  Save Grant
+                  Save
                 </button>
               </div>
             )}
           </div>
 
+          {/* Car Allowance */}
+          <div className="bg-cyan-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-cyan-200 dark:border-cyan-600">
+            <h2 className="text-xl font-semibold text-cyan-900 dark:text-white mb-3">Car Allowance</h2>
+            {carAllowanceConfig.enabled && (
+              <div className="mb-3 bg-white dark:bg-gray-700 p-3 rounded border border-cyan-200 dark:border-cyan-600">
+                <div className="flex justify-between items-start">
+                  <div className="text-sm text-gray-900 dark:text-white">
+                    <div><strong>Amount:</strong> {baseCurrency === 'GBP' ? '£' : '$'}{carAllowanceConfig.amount.toLocaleString()}/year</div>
+                    <div><strong>Growth:</strong> {carAllowanceConfig.growthRate}%/year</div>
+                  </div>
+                  <button
+                    onClick={() => setCarAllowanceConfig({ ...carAllowanceConfig, enabled: false })}
+                    className="text-red-600 dark:text-red-400 hover:text-red-800 text-xl font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                if (!showCarAllowance && carAllowanceConfig.enabled) {
+                  setTempCarAllowance({
+                    amount: carAllowanceConfig.amount.toString(),
+                    growthRate: carAllowanceConfig.growthRate.toString(),
+                  });
+                }
+                setShowCarAllowance(!showCarAllowance);
+              }}
+              className="w-full px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded font-semibold hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors"
+            >
+              {showCarAllowance ? 'Cancel' : carAllowanceConfig.enabled ? 'Edit Car Allowance' : '+ Add Car Allowance'}
+            </button>
+            {showCarAllowance && (
+              <div className="mt-4 space-y-3 bg-white dark:bg-gray-700 p-3 rounded border border-cyan-300 dark:border-cyan-600">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Annual Amount ({baseCurrency === 'GBP' ? '£' : '$'})</label>
+                  <input
+                    type="number"
+                    value={tempCarAllowance.amount}
+                    onChange={(e) => setTempCarAllowance({ ...tempCarAllowance, amount: e.target.value })}
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                    placeholder="e.g., 8000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Annual Growth Rate (%)</label>
+                  <input
+                    type="number"
+                    value={tempCarAllowance.growthRate}
+                    onChange={(e) => setTempCarAllowance({ ...tempCarAllowance, growthRate: e.target.value })}
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                    placeholder="e.g., 2"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveCarAllowance}
+                  className="w-full px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded font-semibold hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Bonus */}
+          <div className="bg-yellow-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-yellow-200 dark:border-yellow-600">
+            <h2 className="text-xl font-semibold text-yellow-900 dark:text-white mb-3">Bonus</h2>
+            {bonusConfig.enabled && (
+              <div className="mb-3 bg-white dark:bg-gray-700 p-3 rounded border border-yellow-200 dark:border-yellow-600">
+                <div className="flex justify-between items-start">
+                  <div className="text-sm text-gray-900 dark:text-white">
+                    <div><strong>Percentage:</strong> {bonusConfig.percentage}% of salary</div>
+                  </div>
+                  <button
+                    onClick={() => setBonusConfig({ ...bonusConfig, enabled: false })}
+                    className="text-red-600 dark:text-red-400 hover:text-red-800 text-xl font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                if (!showBonus && bonusConfig.enabled) {
+                  setTempBonus({ percentage: bonusConfig.percentage.toString() });
+                }
+                setShowBonus(!showBonus);
+              }}
+              className="w-full px-4 py-2 bg-yellow-600 dark:bg-yellow-500 text-white rounded font-semibold hover:bg-yellow-700 dark:hover:bg-yellow-600 transition-colors"
+            >
+              {showBonus ? 'Cancel' : bonusConfig.enabled ? 'Edit Bonus' : '+ Add Bonus'}
+            </button>
+            {showBonus && (
+              <div className="mt-4 space-y-3 bg-white dark:bg-gray-700 p-3 rounded border border-yellow-300 dark:border-yellow-600">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Bonus (% of Salary)</label>
+                  <input
+                    type="number"
+                    value={tempBonus.percentage}
+                    onChange={(e) => setTempBonus({ percentage: e.target.value })}
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                    placeholder="e.g., 12"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveBonus}
+                  className="w-full px-4 py-2 bg-yellow-600 dark:bg-yellow-500 text-white rounded font-semibold hover:bg-yellow-700 dark:hover:bg-yellow-600 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ESPP Configuration */}
           <div className="bg-green-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-green-200 dark:border-green-600">
             <h2 className="text-xl font-semibold text-green-900 dark:text-white mb-3">ESPP Configuration</h2>
 
@@ -773,6 +949,107 @@ const RSUESPPCalculator = () => {
                   className="w-full px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
                 >
                   Save Configuration
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* RSU Grants */}
+          <div className="bg-indigo-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-indigo-200 dark:border-indigo-600">
+            <h2 className="text-xl font-semibold text-indigo-900 dark:text-white mb-3">RSU Grants</h2>
+
+            {rsuGrants.length > 0 && (
+              <div className="space-y-2 mb-3">
+                {rsuGrants.map((grant) => (
+                  <div key={grant.id} className="bg-white dark:bg-gray-700 p-3 rounded border border-indigo-200 dark:border-indigo-600">
+                    <div className="flex justify-between items-start">
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        <div><strong>Shares:</strong> {grant.totalShares}</div>
+                        <div><strong>Grant Price:</strong> ${grant.grantPrice}</div>
+                        <div><strong>Grant Date:</strong> {grant.grantDate}</div>
+                        <div><strong>Vest Start:</strong> {grant.vestStartDate}</div>
+                        <div><strong>Schedule:</strong> {getVestingScheduleLabel(grant.vestingSchedule)}</div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveGrant(grant.id)}
+                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-xl font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowAddGrant(!showAddGrant)}
+              className="w-full px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded font-semibold hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
+            >
+              {showAddGrant ? 'Cancel' : '+ Add RSU Grant'}
+            </button>
+
+            {showAddGrant && (
+              <div className="mt-4 space-y-3 bg-white dark:bg-gray-700 p-3 rounded border border-indigo-300 dark:border-indigo-600">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Grant Date</label>
+                  <input
+                    type="date"
+                    value={newGrant.grantDate}
+                    onChange={(e) => setNewGrant({...newGrant, grantDate: e.target.value})}
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Vest Start Date</label>
+                  <input
+                    type="date"
+                    value={newGrant.vestStartDate}
+                    onChange={(e) => setNewGrant({...newGrant, vestStartDate: e.target.value})}
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Total Shares</label>
+                  <input
+                    type="number"
+                    value={newGrant.totalShares}
+                    onChange={(e) => setNewGrant({...newGrant, totalShares: e.target.value})}
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                    placeholder="e.g., 1703"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Share Price at Grant Date ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newGrant.grantPrice}
+                    onChange={(e) => setNewGrant({...newGrant, grantPrice: e.target.value})}
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                    placeholder="e.g., 250"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-900 dark:text-white">Vesting Schedule</label>
+                  <select
+                    value={newGrant.vestingSchedule}
+                    onChange={(e) => setNewGrant({...newGrant, vestingSchedule: e.target.value})}
+                    className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                  >
+                    <option value="1y-cliff">1 Year Cliff (100% after 1 year)</option>
+                    <option value="3y-annual">3 Years Annual (3 periods)</option>
+                    <option value="3y-6m">3 Years Semi-Annual (6 periods)</option>
+                    <option value="4y-annual">4 Years Annual (4 periods)</option>
+                    <option value="4y-6m">4 Years Semi-Annual (8 periods)</option>
+                    <option value="4y-3m">4 Years Quarterly (16 periods)</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleAddGrant}
+                  className="w-full px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded font-semibold hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
+                >
+                  Save Grant
                 </button>
               </div>
             )}
@@ -1186,7 +1463,79 @@ const RSUESPPCalculator = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <h2 className="text-xl md:text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Detailed Year-by-Year Breakdown</h2>
+            <h2 className="text-xl md:text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Total Compensation (After Tax)</h2>
+            <table className="w-full border-collapse border border-gray-300 dark:border-gray-600">
+              <thead className="bg-gray-100 dark:bg-gray-700">
+                <tr>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Year</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Salary (Net)</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Car (Net)</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Bonus (Net)</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">ESPP (Net)</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">RSU (Net)</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Total Cash</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Total Comp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {calculations.map((row) => (
+                  <tr key={row.year} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-center font-semibold text-gray-900 dark:text-white">{row.displayYear}</td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-teal-700 dark:text-teal-400">
+                      {baseCurrency === 'GBP' ? '£' : '$'}{row.baseSalary.toLocaleString()}
+                    </td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-cyan-700 dark:text-cyan-400">
+                      {baseCurrency === 'GBP' ? '£' : '$'}{row.carAllowance.toLocaleString()}
+                    </td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-yellow-700 dark:text-yellow-400">
+                      {baseCurrency === 'GBP' ? '£' : '$'}{row.bonus.toLocaleString()}
+                    </td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-green-700 dark:text-green-400">
+                      {baseCurrency === 'GBP' ? '£' : '$'}{row.esppValue > 0 ? Math.round((row.esppValue / row.totalValue) * (baseCurrency === 'GBP' ? row.yearlyIncomeGbp : row.yearlyIncome)).toLocaleString() : 0}
+                    </td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-indigo-700 dark:text-indigo-400">
+                      {baseCurrency === 'GBP' ? '£' : '$'}{row.rsuValue > 0 ? Math.round((row.rsuValue / row.totalValue) * (baseCurrency === 'GBP' ? row.yearlyIncomeGbp : row.yearlyIncome)).toLocaleString() : 0}
+                    </td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-semibold text-gray-900 dark:text-white">
+                      {baseCurrency === 'GBP' ? '£' : '$'}{row.totalCash.toLocaleString()}
+                    </td>
+                    <td className="border border-gray-300 dark:border-gray-600 p-2 text-right font-bold text-purple-700 dark:text-purple-400">
+                      {baseCurrency === 'GBP' ? '£' : '$'}{row.totalComp.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+                {/* Totals row */}
+                <tr className="bg-gray-200 dark:bg-gray-600 font-bold">
+                  <td className="border border-gray-300 dark:border-gray-600 p-2 text-center text-gray-900 dark:text-white">TOTAL</td>
+                  <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-teal-700 dark:text-teal-400">
+                    {baseCurrency === 'GBP' ? '£' : '$'}{calculations.reduce((sum, row) => sum + row.baseSalary, 0).toLocaleString()}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-cyan-700 dark:text-cyan-400">
+                    {baseCurrency === 'GBP' ? '£' : '$'}{calculations.reduce((sum, row) => sum + row.carAllowance, 0).toLocaleString()}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-yellow-700 dark:text-yellow-400">
+                    {baseCurrency === 'GBP' ? '£' : '$'}{calculations.reduce((sum, row) => sum + row.bonus, 0).toLocaleString()}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-green-700 dark:text-green-400">
+                    {baseCurrency === 'GBP' ? '£' : '$'}{calculations.reduce((sum, row) => sum + row.esppValue, 0).toLocaleString()}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-indigo-700 dark:text-indigo-400">
+                    {baseCurrency === 'GBP' ? '£' : '$'}{calculations.reduce((sum, row) => sum + row.rsuValue, 0).toLocaleString()}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-gray-900 dark:text-white">
+                    {baseCurrency === 'GBP' ? '£' : '$'}{calculations.reduce((sum, row) => sum + row.totalCash, 0).toLocaleString()}
+                  </td>
+                  <td className="border border-gray-300 dark:border-gray-600 p-2 text-right text-purple-700 dark:text-purple-400">
+                    {baseCurrency === 'GBP' ? '£' : '$'}{calculations.reduce((sum, row) => sum + row.totalComp, 0).toLocaleString()}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Stock Details Table */}
+          <div className="overflow-x-auto">
+            <h2 className="text-xl md:text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Stock Details</h2>
             <table className="w-full border-collapse border border-gray-300 dark:border-gray-600">
               <thead className="bg-gray-100 dark:bg-gray-700">
                 <tr>
@@ -1195,7 +1544,7 @@ const RSUESPPCalculator = () => {
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">RSU Shares</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">ESPP Shares</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Total Shares</th>
-                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Total Value (After Income Tax)</th>
+                  <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Portfolio Value</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Capital Gain (£)</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">CGT Tax (£)</th>
                   <th className="border border-gray-300 dark:border-gray-600 p-2 text-gray-900 dark:text-white">Net After CGT</th>
