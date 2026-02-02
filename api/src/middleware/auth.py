@@ -33,11 +33,11 @@ async def get_current_user(
     settings = get_settings()
     token = credentials.credentials
 
-    # Debug: log the token header
+    # Debug: decode the token header
     header = decode_jwt_header(token)
-    print(f"JWT Header: {header}")
-    print(f"JWT Secret configured: {bool(settings.supabase_jwt_secret)}")
-    print(f"JWT Secret length: {len(settings.supabase_jwt_secret) if settings.supabase_jwt_secret else 0}")
+    token_alg = header.get('alg', 'unknown')
+    secret_len = len(settings.supabase_jwt_secret) if settings.supabase_jwt_secret else 0
+    secret_preview = settings.supabase_jwt_secret[:10] + "..." if settings.supabase_jwt_secret and len(settings.supabase_jwt_secret) > 10 else "empty"
 
     try:
         # Supabase uses HS256 with the JWT secret
@@ -60,8 +60,10 @@ async def get_current_user(
             "email": email,
         }
     except JWTError as e:
-        print(f"JWT decode error: {e}")
-        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}. Token alg: {header.get('alg', 'unknown')}")
+        raise HTTPException(
+            status_code=401,
+            detail=f"Invalid token: {str(e)}. Debug: alg={token_alg}, secret_len={secret_len}, secret_preview={secret_preview}"
+        )
 
 
 async def get_optional_user(
