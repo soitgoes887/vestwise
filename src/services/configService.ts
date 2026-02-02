@@ -62,7 +62,9 @@ export async function listConfigs(configType?: 'rsu' | 'pension'): Promise<Confi
   const response = await fetch(url, { headers });
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    const errorText = await response.text();
+    console.error('listConfigs error:', response.status, errorText);
+    throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
   }
 
   return response.json();
@@ -103,7 +105,9 @@ export async function saveConfig(
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error('updateConfig error:', response.status, errorText);
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
     }
 
     return response.json();
@@ -121,7 +125,9 @@ export async function saveConfig(
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error('createConfig error:', response.status, errorText);
+      throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
     }
 
     return response.json();
