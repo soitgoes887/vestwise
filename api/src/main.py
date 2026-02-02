@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .db import init_db, close_db
@@ -10,7 +11,12 @@ from .routes import health, configs
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    await init_db()
+    try:
+        await init_db()
+        print("Database pool initialized successfully")
+    except Exception as e:
+        print(f"Failed to initialize database: {e}")
+        raise
     yield
     # Shutdown
     await close_db()
@@ -23,6 +29,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+# Global exception handler to return detailed errors
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"Unhandled exception: {exc}")
+    import traceback
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"},
+    )
+
+
 # CORS middleware
 settings = get_settings()
 app.add_middleware(
@@ -30,6 +49,7 @@ app.add_middleware(
     allow_origins=["*"] if settings.debug else [
         "https://vestwise.co.uk",
         "https://www.vestwise.co.uk",
+        "https://dev.vestwise.co.uk",
     ],
     allow_credentials=True,
     allow_methods=["*"],
