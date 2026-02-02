@@ -1,4 +1,5 @@
 config:
+  vestwise-infrastructure:namespace: vestwise-prod
   vestwise-infrastructure:pgPassword:
     secure: AAABAFXQghSRXQKrAPmpB/cHnHDw0i9DyBQenzMXN3tognz0Uwf9MXmn9Du3/xY/HhT3SkXhnZ/1MCaxbgI6OA==
   vestwise-infrastructure:supabaseUrl:
