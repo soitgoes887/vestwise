@@ -38,10 +38,10 @@ jobs:
           if [ -n "${{ github.event.inputs.image_tag }}" ]; then
             echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
           else
-            # Auto-generate version: YYYY.MM.DD-short_sha
+            # Auto-generate version: YYYY.MM.DD-short_sha-run_number
             DATE=$(date +'%Y.%m.%d')
             SHORT_SHA=$(git rev-parse --short HEAD)
-            echo "tag=${DATE}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+            echo "tag=${DATE}-${SHORT_SHA}-${{ github.run_number }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Set environment variables
