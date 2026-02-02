@@ -1,10 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { saveConfig, loadConfig, generateReadableUUID } from './services/configService';
+import { saveConfig, loadConfig, generateReadableUUID, listConfigs, ConfigResponse } from './services/configService';
 import { fetchUsdToGbpRateECB, ExchangeRateData } from './services/exchangeRateService';
 import { fetchStockPrice, COMPANIES, Company, StockPriceData } from './services/stockPriceService';
+import { useAuth } from './contexts/AuthContext';
 
 const RSUESPPCalculator = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   // Format large numbers to k/M format (e.g., 100000 -> 100k)
   const formatValue = (value: number): string => {
     if (value >= 1000000) {
@@ -99,6 +103,8 @@ const RSUESPPCalculator = () => {
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
   const [loadStatus, setLoadStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
   const [showSaveLoad, setShowSaveLoad] = useState(false);
+  const [savedConfigs, setSavedConfigs] = useState<ConfigResponse[]>([]);
+  const [loadingConfigs, setLoadingConfigs] = useState(false);
 
   // Exchange rate state
   const [exchangeRateData, setExchangeRateData] = useState<ExchangeRateData | null>(null);
@@ -137,6 +143,27 @@ const RSUESPPCalculator = () => {
   useEffect(() => {
     fetchExchangeRate();
   }, []);
+
+  // Fetch saved configs when user is authenticated
+  useEffect(() => {
+    if (user) {
+      fetchSavedConfigs();
+    } else {
+      setSavedConfigs([]);
+    }
+  }, [user]);
+
+  const fetchSavedConfigs = async () => {
+    setLoadingConfigs(true);
+    try {
+      const configs = await listConfigs('rsu');
+      setSavedConfigs(configs);
+    } catch (error) {
+      console.error('Failed to fetch saved configs:', error);
+    } finally {
+      setLoadingConfigs(false);
+    }
+  };
 
   const fetchExchangeRate = async () => {
     setLoadingRate(true);
@@ -314,9 +341,10 @@ const RSUESPPCalculator = () => {
     }
   };
 
-  const handleLoadConfiguration = async () => {
+  const handleLoadConfiguration = async (idToLoad?: string) => {
+    const configId = idToLoad || loadUuid;
     try {
-      const config = await loadConfig(loadUuid);
+      const config = await loadConfig(configId);
       setRsuGrants(config.rsuGrants || []);
       setEsppConfig(config.esppConfig || esppConfig);
       setParams(config.params || params);
@@ -326,7 +354,7 @@ const RSUESPPCalculator = () => {
       if (config.baseSalaryConfig) setBaseSalaryConfig(config.baseSalaryConfig);
       if (config.bonusConfig) setBonusConfig(config.bonusConfig);
       if (config.carAllowanceConfig) setCarAllowanceConfig(config.carAllowanceConfig);
-      setConfigUuid(loadUuid);
+      setConfigUuid(configId);
 
       // Fetch fresh stock price if a company was saved
       if (config.selectedCompany) {
@@ -1372,66 +1400,92 @@ const RSUESPPCalculator = () => {
           <div className="bg-pink-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-pink-200 dark:border-pink-600">
             <h2 className="text-xl font-semibold text-pink-900 dark:text-white mb-3">Save/Load Configuration</h2>
 
-            <button
-              onClick={() => setShowSaveLoad(!showSaveLoad)}
-              className="w-full px-4 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors"
-            >
-              {showSaveLoad ? 'Hide' : 'Save or Load Config'}
-            </button>
-
-            {showSaveLoad && (
-              <div className="mt-4 space-y-4 bg-white dark:bg-gray-700 p-3 rounded border border-pink-300 dark:border-pink-600">
-                <div>
-                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Save Configuration</h3>
-                  {configUuid && (
-                    <div className="mb-2 p-2 bg-blue-100 dark:bg-blue-900 rounded text-sm text-gray-900 dark:text-white">
-                      <strong>Current ID:</strong> {configUuid}
-                    </div>
-                  )}
-                  <button
-                    onClick={handleSaveConfiguration}
-                    className="w-full px-4 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors"
-                  >
-                    {configUuid ? 'Update Configuration' : 'Save Configuration'}
-                  </button>
-                  {saveStatus.type && (
-                    <div className={`mt-2 p-2 rounded text-sm ${
-                      saveStatus.type === 'success'
-                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                    }`}>
-                      {saveStatus.message}
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-3 border-t border-pink-200 dark:border-pink-700">
-                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Load Configuration</h3>
-                  <input
-                    type="text"
-                    value={loadUuid}
-                    onChange={(e) => setLoadUuid(e.target.value)}
-                    placeholder="Enter your config ID"
-                    className="w-full p-2 border rounded mb-2 dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                  />
-                  <button
-                    onClick={handleLoadConfiguration}
-                    disabled={!loadUuid}
-                    className="w-full px-4 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Load Configuration
-                  </button>
-                  {loadStatus.type && (
-                    <div className={`mt-2 p-2 rounded text-sm ${
-                      loadStatus.type === 'success'
-                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                    }`}>
-                      {loadStatus.message}
-                    </div>
-                  )}
-                </div>
+            {!user ? (
+              <div className="text-center py-4">
+                <p className="text-gray-600 dark:text-gray-400 mb-3">Sign in to save and load your configurations</p>
+                <button
+                  onClick={() => navigate('/login', { state: { from: { pathname: '/rsu' } } })}
+                  className="px-6 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors"
+                >
+                  Sign In to Save
+                </button>
               </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowSaveLoad(!showSaveLoad)}
+                  className="w-full px-4 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors"
+                >
+                  {showSaveLoad ? 'Hide' : 'Save or Load Config'}
+                </button>
+
+                {showSaveLoad && (
+                  <div className="mt-4 space-y-4 bg-white dark:bg-gray-700 p-3 rounded border border-pink-300 dark:border-pink-600">
+                    <div>
+                      <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Save Configuration</h3>
+                      {configUuid && (
+                        <div className="mb-2 p-2 bg-blue-100 dark:bg-blue-900 rounded text-sm text-gray-900 dark:text-white">
+                          <strong>Current:</strong> {savedConfigs.find(c => c.id === configUuid)?.name || configUuid}
+                        </div>
+                      )}
+                      <button
+                        onClick={handleSaveConfiguration}
+                        className="w-full px-4 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors"
+                      >
+                        {configUuid ? 'Update Configuration' : 'Save New Configuration'}
+                      </button>
+                      {saveStatus.type && (
+                        <div className={`mt-2 p-2 rounded text-sm ${
+                          saveStatus.type === 'success'
+                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                            : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                        }`}>
+                          {saveStatus.message}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-3 border-t border-pink-200 dark:border-pink-700">
+                      <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Your Saved Configurations</h3>
+                      {loadingConfigs ? (
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">Loading...</p>
+                      ) : savedConfigs.length === 0 ? (
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">No saved configurations yet</p>
+                      ) : (
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {savedConfigs.map((config) => (
+                            <button
+                              key={config.id}
+                              onClick={() => handleLoadConfiguration(config.id)}
+                              className={`w-full text-left p-2 rounded border transition-colors ${
+                                configUuid === config.id
+                                  ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/30'
+                                  : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                              }`}
+                            >
+                              <div className="font-medium text-gray-900 dark:text-white">
+                                {config.name || 'Unnamed Config'}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                Updated {new Date(config.updated_at).toLocaleDateString()}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {loadStatus.type && (
+                        <div className={`mt-2 p-2 rounded text-sm ${
+                          loadStatus.type === 'success'
+                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                            : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                        }`}>
+                          {loadStatus.message}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

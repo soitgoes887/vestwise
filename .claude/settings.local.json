@@ -30,7 +30,9 @@
       "Bash(yarn install:*)",
       "Bash(yarn build:*)",
       "Bash(git -C /Users/anicu/Projects/vestwise ls-files:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(yarn test:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
