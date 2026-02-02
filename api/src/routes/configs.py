@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from uuid import UUID
 import json
+import traceback
 
 from ..middleware.auth import get_current_user
 from ..models.config import ConfigCreate, ConfigUpdate, ConfigResponse
@@ -28,42 +29,46 @@ async def list_configs(
     user: dict = Depends(get_current_user),
 ):
     """List all configs for the authenticated user."""
-    async with get_connection() as conn:
-        if config_type:
-            rows = await conn.fetch(
-                """
-                SELECT id, user_id, config_type, name, config_data, is_default, created_at, updated_at
-                FROM user_configs
-                WHERE user_id = $1 AND config_type = $2
-                ORDER BY is_default DESC, updated_at DESC
-                """,
-                UUID(user["id"]),
-                config_type,
-            )
-        else:
-            rows = await conn.fetch(
-                """
-                SELECT id, user_id, config_type, name, config_data, is_default, created_at, updated_at
-                FROM user_configs
-                WHERE user_id = $1
-                ORDER BY config_type, is_default DESC, updated_at DESC
-                """,
-                UUID(user["id"]),
-            )
+    try:
+        async with get_connection() as conn:
+            if config_type:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, user_id, config_type, name, config_data, is_default, created_at, updated_at
+                    FROM user_configs
+                    WHERE user_id = $1 AND config_type = $2
+                    ORDER BY is_default DESC, updated_at DESC
+                    """,
+                    UUID(user["id"]),
+                    config_type,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, user_id, config_type, name, config_data, is_default, created_at, updated_at
+                    FROM user_configs
+                    WHERE user_id = $1
+                    ORDER BY config_type, is_default DESC, updated_at DESC
+                    """,
+                    UUID(user["id"]),
+                )
 
-        return [
-            ConfigResponse(
-                id=row["id"],
-                user_id=row["user_id"],
-                config_type=row["config_type"],
-                name=row["name"],
-                config_data=json.loads(row["config_data"]),
-                is_default=row["is_default"],
-                created_at=row["created_at"],
-                updated_at=row["updated_at"],
-            )
-            for row in rows
-        ]
+            return [
+                ConfigResponse(
+                    id=row["id"],
+                    user_id=row["user_id"],
+                    config_type=row["config_type"],
+                    name=row["name"],
+                    config_data=json.loads(row["config_data"]),
+                    is_default=row["is_default"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                )
+                for row in rows
+            ]
+    except Exception as e:
+        print(f"Error in list_configs: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @router.get("/{config_id}", response_model=ConfigResponse)
@@ -104,48 +109,52 @@ async def create_config(
     user: dict = Depends(get_current_user),
 ):
     """Create a new config."""
-    async with get_connection() as conn:
-        async with conn.transaction():
-            # Ensure user exists
-            await ensure_user_exists(conn, user)
+    try:
+        async with get_connection() as conn:
+            async with conn.transaction():
+                # Ensure user exists
+                await ensure_user_exists(conn, user)
 
-            user_id = UUID(user["id"])
+                user_id = UUID(user["id"])
 
-            # If this is set as default, unset other defaults of same type
-            if config.is_default:
-                await conn.execute(
+                # If this is set as default, unset other defaults of same type
+                if config.is_default:
+                    await conn.execute(
+                        """
+                        UPDATE user_configs
+                        SET is_default = FALSE
+                        WHERE user_id = $1 AND config_type = $2
+                        """,
+                        user_id,
+                        config.config_type,
+                    )
+
+                row = await conn.fetchrow(
                     """
-                    UPDATE user_configs
-                    SET is_default = FALSE
-                    WHERE user_id = $1 AND config_type = $2
+                    INSERT INTO user_configs (user_id, config_type, name, config_data, is_default)
+                    VALUES ($1, $2, $3, $4, $5)
+                    RETURNING id, user_id, config_type, name, config_data, is_default, created_at, updated_at
                     """,
                     user_id,
                     config.config_type,
+                    config.name,
+                    json.dumps(config.config_data),
+                    config.is_default,
                 )
 
-            row = await conn.fetchrow(
-                """
-                INSERT INTO user_configs (user_id, config_type, name, config_data, is_default)
-                VALUES ($1, $2, $3, $4, $5)
-                RETURNING id, user_id, config_type, name, config_data, is_default, created_at, updated_at
-                """,
-                user_id,
-                config.config_type,
-                config.name,
-                json.dumps(config.config_data),
-                config.is_default,
-            )
-
-            return ConfigResponse(
-                id=row["id"],
-                user_id=row["user_id"],
-                config_type=row["config_type"],
-                name=row["name"],
-                config_data=json.loads(row["config_data"]),
-                is_default=row["is_default"],
-                created_at=row["created_at"],
-                updated_at=row["updated_at"],
-            )
+                return ConfigResponse(
+                    id=row["id"],
+                    user_id=row["user_id"],
+                    config_type=row["config_type"],
+                    name=row["name"],
+                    config_data=json.loads(row["config_data"]),
+                    is_default=row["is_default"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                )
+    except Exception as e:
+        print(f"Error in create_config: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @router.put("/{config_id}", response_model=ConfigResponse)
