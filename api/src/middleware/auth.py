@@ -1,27 +1,50 @@
 from fastapi import Request, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+from jose import jwt, JWTError, jwk
+from jose.utils import base64url_decode
 import httpx
 import base64
 import json
+from functools import lru_cache
 
 from ..config import get_settings
 
 security = HTTPBearer()
 
+# Cache for JWKS
+_jwks_cache: dict | None = None
 
-def decode_jwt_header(token: str) -> dict:
-    """Decode JWT header without verification to inspect algorithm."""
-    try:
-        header_segment = token.split('.')[0]
-        # Add padding if needed
-        padding = 4 - len(header_segment) % 4
-        if padding != 4:
-            header_segment += '=' * padding
-        header_bytes = base64.urlsafe_b64decode(header_segment)
-        return json.loads(header_bytes)
-    except Exception as e:
-        return {"error": str(e)}
+
+async def get_jwks(supabase_url: str) -> dict:
+    """Fetch JWKS from Supabase."""
+    global _jwks_cache
+    if _jwks_cache:
+        return _jwks_cache
+
+    jwks_url = f"{supabase_url}/auth/v1/.well-known/jwks.json"
+    async with httpx.AsyncClient() as client:
+        response = await client.get(jwks_url)
+        response.raise_for_status()
+        _jwks_cache = response.json()
+        return _jwks_cache
+
+
+def get_signing_key(jwks: dict, token: str) -> str:
+    """Get the signing key from JWKS that matches the token's kid."""
+    # Decode header to get kid
+    header_segment = token.split('.')[0]
+    padding = 4 - len(header_segment) % 4
+    if padding != 4:
+        header_segment += '=' * padding
+    header = json.loads(base64url_decode(header_segment.encode()))
+
+    kid = header.get('kid')
+
+    for key in jwks.get('keys', []):
+        if key.get('kid') == kid:
+            return key
+
+    raise ValueError(f"No matching key found for kid: {kid}")
 
 
 async def get_current_user(
@@ -33,18 +56,18 @@ async def get_current_user(
     settings = get_settings()
     token = credentials.credentials
 
-    # Debug: decode the token header
-    header = decode_jwt_header(token)
-    token_alg = header.get('alg', 'unknown')
-    secret_len = len(settings.supabase_jwt_secret) if settings.supabase_jwt_secret else 0
-    secret_preview = settings.supabase_jwt_secret[:10] + "..." if settings.supabase_jwt_secret and len(settings.supabase_jwt_secret) > 10 else "empty"
-
     try:
-        # Supabase uses HS256 with the JWT secret
+        # Fetch JWKS from Supabase
+        jwks = await get_jwks(settings.supabase_url)
+
+        # Get the signing key
+        signing_key = get_signing_key(jwks, token)
+
+        # Decode and verify the token
         payload = jwt.decode(
             token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
+            signing_key,
+            algorithms=["ES256"],
             audience="authenticated",
             options={"verify_aud": True},
         )
@@ -59,11 +82,12 @@ async def get_current_user(
             "id": user_id,
             "email": email,
         }
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch JWKS: {str(e)}")
     except JWTError as e:
-        raise HTTPException(
-            status_code=401,
-            detail=f"Invalid token: {str(e)}. Debug: alg={token_alg}, secret_len={secret_len}, secret_preview={secret_preview}"
-        )
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Token validation failed: {str(e)}")
 
 
 async def get_optional_user(
@@ -81,17 +105,24 @@ async def get_optional_user(
         token = auth_header.split(" ")[1]
         settings = get_settings()
 
-        # Supabase uses HS256 with the JWT secret
+        # Fetch JWKS from Supabase
+        jwks = await get_jwks(settings.supabase_url)
+
+        # Get the signing key
+        signing_key = get_signing_key(jwks, token)
+
+        # Decode and verify the token
         payload = jwt.decode(
             token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
+            signing_key,
+            algorithms=["ES256"],
             audience="authenticated",
             options={"verify_aud": True},
         )
+
         return {
             "id": payload.get("sub"),
             "email": payload.get("email"),
         }
-    except (JWTError, IndexError):
+    except Exception:
         return None
