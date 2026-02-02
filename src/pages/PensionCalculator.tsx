@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { saveConfig, loadConfig, generateReadableUUID, listConfigs, renameConfig, ConfigResponse } from '../services/configService';
+import { saveConfig, loadConfig, generateReadableUUID, listConfigs, renameConfig, deleteConfig, ConfigResponse } from '../services/configService';
 import { useAuth } from '../contexts/AuthContext';
 
 interface PensionPot {
@@ -245,6 +245,21 @@ const PensionCalculator: React.FC = () => {
       setEditingConfigName('');
     } catch (error) {
       console.error('Failed to rename config:', error);
+    }
+  };
+
+  const handleDeleteConfig = async (configId: string, configName: string) => {
+    if (!window.confirm(`Delete "${configName}"? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await deleteConfig(configId);
+      setSavedConfigs(savedConfigs.filter(c => c.id !== configId));
+      if (configUuid === configId) {
+        setConfigUuid('');
+      }
+    } catch (error) {
+      console.error('Failed to delete config:', error);
     }
   };
 
@@ -1002,16 +1017,27 @@ const PensionCalculator: React.FC = () => {
                                       Updated {new Date(config.updated_at).toLocaleDateString()}
                                     </div>
                                   </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingConfigId(config.id);
-                                      setEditingConfigName(config.name || '');
-                                    }}
-                                    className="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 text-xs font-medium"
-                                  >
-                                    Rename
-                                  </button>
+                                  <div className="flex gap-2 ml-2">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingConfigId(config.id);
+                                        setEditingConfigName(config.name || '');
+                                      }}
+                                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 text-xs font-medium"
+                                    >
+                                      Rename
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteConfig(config.id, config.name || 'Unnamed Config');
+                                      }}
+                                      className="text-red-600 dark:text-red-400 hover:text-red-800 text-xs font-medium"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
                                 </div>
                               )}
                             </div>
