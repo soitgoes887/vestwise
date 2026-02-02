@@ -18,12 +18,15 @@ async def get_current_user(
     token = credentials.credentials
 
     try:
-        # Supabase uses the JWT secret from the project settings
-        # The token can be verified using the anon key's JWT secret
+        # First, decode without verification to check the algorithm
+        unverified = jwt.get_unverified_header(token)
+        alg = unverified.get("alg", "HS256")
+
+        # Supabase uses HS256 with the JWT secret
         payload = jwt.decode(
             token,
             settings.supabase_jwt_secret,
-            algorithms=["HS256"],
+            algorithms=[alg],
             audience="authenticated",
         )
 
@@ -55,10 +58,15 @@ async def get_optional_user(
     try:
         token = auth_header.split(" ")[1]
         settings = get_settings()
+
+        # First, decode without verification to check the algorithm
+        unverified = jwt.get_unverified_header(token)
+        alg = unverified.get("alg", "HS256")
+
         payload = jwt.decode(
             token,
             settings.supabase_jwt_secret,
-            algorithms=["HS256"],
+            algorithms=[alg],
             audience="authenticated",
         )
         return {
