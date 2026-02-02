@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: vestwise
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: vestwise
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "vestwise"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://vestwise:localdev@postgres:5432/vestwise
+      SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-dummy}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-dummy}
+      DEBUG: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
+      REACT_APP_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-dummy}
+      REACT_APP_API_URL: http://localhost:3001/api
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

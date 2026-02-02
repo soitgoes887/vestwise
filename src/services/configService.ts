@@ -1,7 +1,6 @@
-// Lambda Function URLs from Pulumi output
-// Replace these with your actual Lambda Function URLs after deployment
-const SAVE_URL = process.env.REACT_APP_SAVE_CONFIG_URL || 'YOUR_SAVE_LAMBDA_URL';
-const LOAD_URL = process.env.REACT_APP_LOAD_CONFIG_URL || 'YOUR_LOAD_LAMBDA_URL';
+import { supabase } from '../lib/supabase';
+
+const API_BASE = process.env.REACT_APP_API_URL || '/api';
 
 export interface SavedConfig {
   rsuGrants?: any[];
@@ -24,86 +23,151 @@ export interface SavedConfig {
     retirementAge: string;
     annualReturn: string;
   };
+  // Compensation fields
+  baseSalaryConfig?: any;
+  bonusConfig?: any;
+  carAllowanceConfig?: any;
   // Add a type discriminator
-  configType?: 'rsu' | 'pension';
+  configType: 'rsu' | 'pension';
 }
 
-export interface SavedPensionConfig {
-  pensionPots: any[];
-  inputs: {
-    pensionableIncome: string;
-    ownContributionPct: string;
-    employerContributionPct: string;
-    currentAge: string;
-    retirementAge: string;
-    annualReturn: string;
+export interface ConfigResponse {
+  id: string;
+  user_id: string;
+  config_type: 'rsu' | 'pension';
+  name: string | null;
+  config_data: SavedConfig;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Not authenticated');
+  }
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${session.access_token}`,
   };
-  configType: 'pension';
 }
 
-export async function saveConfig(uuid: string, config: SavedConfig): Promise<{ success: boolean; uuid: string }> {
-  try {
-    const response = await fetch(SAVE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uuid, config })
+export async function listConfigs(configType?: 'rsu' | 'pension'): Promise<ConfigResponse[]> {
+  const headers = await getAuthHeaders();
+  const url = configType
+    ? `${API_BASE}/configs?config_type=${configType}`
+    : `${API_BASE}/configs`;
+
+  const response = await fetch(url, { headers });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function getConfig(id: string): Promise<ConfigResponse> {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE}/configs/${id}`, { headers });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Configuration not found');
+    }
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function saveConfig(
+  config: SavedConfig,
+  name?: string,
+  isDefault?: boolean,
+  existingId?: string
+): Promise<ConfigResponse> {
+  const headers = await getAuthHeaders();
+
+  if (existingId) {
+    // Update existing config
+    const response = await fetch(`${API_BASE}/configs/${existingId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        config_data: config,
+        name,
+        is_default: isDefault,
+      }),
     });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    return await response.json();
-  } catch (error) {
-    console.error('Error saving config:', error);
-    throw error;
-  }
-}
-
-export async function loadConfig(uuid: string): Promise<SavedConfig> {
-  try {
-    const response = await fetch(`${LOAD_URL}?uuid=${uuid}`);
+    return response.json();
+  } else {
+    // Create new config
+    const response = await fetch(`${API_BASE}/configs`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        config_type: config.configType,
+        config_data: config,
+        name,
+        is_default: isDefault ?? false,
+      }),
+    });
 
     if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('Configuration not found');
-      }
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    return await response.json();
-  } catch (error) {
-    console.error('Error loading config:', error);
-    throw error;
+    return response.json();
   }
 }
 
-// Helper to generate a memorable UUID
-export function generateReadableUUID(): string {
+export async function deleteConfig(id: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE}/configs/${id}`, {
+    method: 'DELETE',
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+}
+
+// Legacy function for backward compatibility - now just wraps saveConfig
+export async function loadConfig(id: string): Promise<SavedConfig> {
+  const config = await getConfig(id);
+  return config.config_data;
+}
+
+// Helper to generate a memorable name for configs
+export function generateReadableName(): string {
   const adjectives = [
     'quick', 'happy', 'bright', 'calm', 'wise', 'bold', 'smart', 'cool',
     'brave', 'clever', 'gentle', 'kind', 'swift', 'proud', 'noble', 'keen',
     'fierce', 'silent', 'mighty', 'grand', 'wild', 'free', 'pure', 'true',
     'strong', 'sharp', 'deep', 'golden', 'silver', 'royal', 'cosmic', 'mystic',
-    'ancient', 'modern', 'vivid', 'serene', 'radiant', 'stellar', 'lunar', 'solar',
-    'arctic', 'tropic', 'crystal', 'velvet', 'marble', 'bronze', 'iron', 'steel',
-    'forest', 'ocean', 'storm', 'thunder', 'frost', 'fire', 'wind', 'shadow',
-    'light', 'dawn', 'dusk', 'azure', 'crimson', 'violet', 'jade', 'amber'
   ];
 
   const nouns = [
     'fox', 'bear', 'eagle', 'lion', 'wolf', 'tiger', 'hawk', 'owl',
     'falcon', 'raven', 'dragon', 'phoenix', 'lynx', 'panther', 'leopard', 'cheetah',
-    'jaguar', 'cougar', 'cobra', 'viper', 'python', 'shark', 'whale', 'dolphin',
-    'orca', 'manta', 'titan', 'giant', 'warrior', 'knight', 'sage', 'wizard',
-    'ranger', 'hunter', 'scout', 'guardian', 'sentinel', 'champion', 'hero', 'master',
+    'titan', 'giant', 'warrior', 'knight', 'sage', 'wizard',
     'comet', 'meteor', 'nebula', 'galaxy', 'quasar', 'pulsar', 'nova', 'supernova',
-    'mountain', 'river', 'canyon', 'valley', 'summit', 'peak', 'cliff', 'glacier',
-    'thunder', 'lightning', 'tempest', 'cyclone', 'typhoon', 'aurora', 'horizon', 'zenith'
   ];
 
   const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
   const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  const num = Math.floor(Math.random() * 99999); // 5 digits for more combinations
-  return `${adj}-${noun}-${num}`;
+  return `${adj}-${noun}`;
+}
+
+// Keep for backward compatibility
+export function generateReadableUUID(): string {
+  return generateReadableName();
 }

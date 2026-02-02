@@ -1,0 +1,14 @@
+config:
+  vestwise-infrastructure:pgPassword:
+    secure: AAABAFSoReAdHZf8J/m+9D723cL/P+R/pnGbiJ1/wHZaQz0pvuWHcU2ch72UuMUV2jAWeafcMx/QL5MpaC3aqg==
+  vestwise-infrastructure:supabaseUrl:
+    secure: AAABACaqIVu73nmLtqo+X/sYDfd6dO/uUNtbf9m5CdohdeDY7FJ0RCi2/1OmSPA162LdmuPR0unHS3FUvybNdI3luqQdR/M3
+  vestwise-infrastructure:supabaseAnonKey:
+    secure: AAABADLxtuu29WJ6RjQYRcYC2R3tP2ORpSLtMRq2qhebXif9rz9n935S+tLo9yRefVws76Y+PvZq/HNCYaOAX7LWk1Th1qxo46IJi84260JAujwPnhLp0Sk1lUvaWEgcDoBknEcd3g1ZaWQCJtUNxT0tLaGlkYY45UIQr5dwzPUTCOB9tUmjkwiEzaLckmmTv4AjOYeFZKOHv2iqqHg5q+aanh8VqahPaVuOJR2dTWyDbykWo3EEx3Ab/VbQRAH59IGpjaYOzL8PUMEMPIr1nV4zCPJFBJ60ytAUdg2WQpdJFjXt7UflDgYvbeV0pkDd
+  vestwise-infrastructure:supabaseJwtSecret:
+    secure: AAABAJ62a3tqMtGnM/AdsR8e2fqrl0bKGynFoNOvpGJ+rAsEaBVr0FNouN8C8Z5gfWGq6m1FzPIs4N6rCHHvBYilFOs4MjkAN5KmSDlc4xgMfAa8Ke+Oo9AKvZyG4RWD2nR7KMtVHOvlJg4ErSBDI2CtUZfXx5Ff
+  vestwise-infrastructure:image: anicu/vestwise:local
+  vestwise-infrastructure:apiImage: anicu/vestwise-api:local
+  vestwise-infrastructure:host: vestwise.local
+  vestwise-infrastructure:kubeconfigContext: minikube
+  vestwise-infrastructure:imagePullPolicy: Never

@@ -11,6 +11,7 @@ on:
 
 env:
   DOCKER_IMAGE: anicu/vestwise
+  DOCKER_IMAGE_API: anicu/vestwise-api
 
 jobs:
   build-and-deploy:
@@ -47,8 +48,8 @@ jobs:
 
       - name: Build React app
         env:
-          REACT_APP_SAVE_CONFIG_URL: ${{ secrets.REACT_APP_SAVE_CONFIG_URL }}
-          REACT_APP_LOAD_CONFIG_URL: ${{ secrets.REACT_APP_LOAD_CONFIG_URL }}
+          REACT_APP_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           REACT_APP_ALPHA_VANTAGE_API_KEY: ${{ secrets.REACT_APP_ALPHA_VANTAGE_API_KEY }}
           REACT_APP_FMP_API_KEY: ${{ secrets.REACT_APP_FMP_API_KEY }}
         run: yarn build
@@ -65,16 +66,23 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build and push Frontend Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
           platforms: linux/arm64
           push: true
-          tags: |
-            ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}
-            ${{ env.DOCKER_IMAGE }}:latest
+          tags: ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}
+
+      - name: Build and push API Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          file: ./api/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.DOCKER_IMAGE_API }}:${{ steps.version.outputs.tag }}
 
       - name: Install Pulumi
         uses: pulumi/actions@v5
@@ -99,11 +107,13 @@ jobs:
         run: |
           pulumi stack select vestwise-dev
           pulumi config set image ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}
+          pulumi config set apiImage ${{ env.DOCKER_IMAGE_API }}:${{ steps.version.outputs.tag }}
           pulumi up --yes
 
       - name: Verify deployment
         run: |
           kubectl rollout status deployment/vestwise -n vestwise --timeout=120s
+          kubectl rollout status deployment/vestwise-api -n vestwise --timeout=120s
 
       - name: Create GitHub Release
         if: github.event_name == 'push'
@@ -116,6 +126,8 @@ jobs:
 
             **Changes:** ${{ github.event.head_commit.message }}
 
-            **Docker Image:** `${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}`
+            **Docker Images:**
+            - Frontend: `${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}`
+            - API: `${{ env.DOCKER_IMAGE_API }}:${{ steps.version.outputs.tag }}`
           generateReleaseNotes: true
           skipIfReleaseExists: true

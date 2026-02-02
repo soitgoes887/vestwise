@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(dig:*)",
+      "Bash(curl:*)",
+      "Bash(git fetch:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(cat:*)",
+      "Bash(rsvg-convert:*)",
+      "WebSearch",
+      "WebFetch(domain:www.gov.uk)",
+      "WebFetch(domain:www.expertsforexpats.com)",
+      "WebFetch(domain:www2.deloitte.com)",
+      "Bash(pulumi new:*)",
+      "Bash(pulumi:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run build:*)",
+      "WebFetch(domain:site.financialmodelingprep.com)",
+      "Bash(npm test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix RSU calculator date validation and hardcoded reference date\n\n- Add validation to prevent vest start date from being before grant date\n- Replace hardcoded ''2025-10-13'' reference date with current date for accurate projections\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "WebFetch(domain:aws.amazon.com)",
+      "Bash(aws pricing:*)",
+      "WebFetch(domain:calculator.aws)",
+      "Bash(source venv/bin/activate)",
+      "Bash(pip install:*)",
+      "Bash(ls:*)",
+      "Bash(yarn install:*)",
+      "Bash(yarn build:*)",
+      "Bash(git -C /Users/anicu/Projects/vestwise ls-files:*)",
+      "Bash(git rm:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
