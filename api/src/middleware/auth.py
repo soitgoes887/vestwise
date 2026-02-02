@@ -2,10 +2,26 @@ from fastapi import Request, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 import httpx
+import base64
+import json
 
 from ..config import get_settings
 
 security = HTTPBearer()
+
+
+def decode_jwt_header(token: str) -> dict:
+    """Decode JWT header without verification to inspect algorithm."""
+    try:
+        header_segment = token.split('.')[0]
+        # Add padding if needed
+        padding = 4 - len(header_segment) % 4
+        if padding != 4:
+            header_segment += '=' * padding
+        header_bytes = base64.urlsafe_b64decode(header_segment)
+        return json.loads(header_bytes)
+    except Exception as e:
+        return {"error": str(e)}
 
 
 async def get_current_user(
@@ -17,9 +33,14 @@ async def get_current_user(
     settings = get_settings()
     token = credentials.credentials
 
+    # Debug: log the token header
+    header = decode_jwt_header(token)
+    print(f"JWT Header: {header}")
+    print(f"JWT Secret configured: {bool(settings.supabase_jwt_secret)}")
+    print(f"JWT Secret length: {len(settings.supabase_jwt_secret) if settings.supabase_jwt_secret else 0}")
+
     try:
         # Supabase uses HS256 with the JWT secret
-        # Force HS256 algorithm regardless of token header to prevent algorithm confusion attacks
         payload = jwt.decode(
             token,
             settings.supabase_jwt_secret,
@@ -39,7 +60,8 @@ async def get_current_user(
             "email": email,
         }
     except JWTError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
+        print(f"JWT decode error: {e}")
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}. Token alg: {header.get('alg', 'unknown')}")
 
 
 async def get_optional_user(
