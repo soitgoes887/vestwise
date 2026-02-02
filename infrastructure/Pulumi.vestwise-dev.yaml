@@ -3,3 +3,12 @@ config:
   vestwise-infrastructure:image: anicu/vestwise:latest
   vestwise-infrastructure:replicas: "2"
   vestwise-infrastructure:kubeconfigContext: kubernetes-admin@kubernetes
+  vestwise-infrastructure:supabaseJwtSecret:
+    secure: v1:PRNZriZ/fFU0esTR:KAWxHKwesSn/ruY7e7W6YtH+mzkEATt3ttnFL6GF4yeFJ8xiUHpeSYj6lCEEPjBnB4GjFbw52eHudMxNOLSNhg94mQEOk93MYa4gp8BPb7poL/yKbKHEBlCcpLGyysAHKRxKScPuRN4=
+  vestwise-infrastructure:supabaseUrl:
+    secure: v1:qpNONxNzHpgPlDyY:e33hXZ3ts0fbX7/L4xr+uXN8CfI7L3KBnMF8asSUsdf2LYQs0GA2dP4lAPg4FoEMp4u/6hwfQAk=
+  vestwise-infrastructure:supabaseAnonKey:
+    secure: v1:h6UHFFmus32/htKH:Opgedw06f69ZXOeDnsd51S9P46yDfYgFlptaw2qRsRFpKziOdA3RsLAkqUe4dfcxfdQCuO5fiiupxmYmZx7czxHBeGLirDp6ZN3PXc5LJx5Unmy1oc4aLA1Ago/kffTPGCBTp9VDltMPgHTcy9CWw/Q6i3wi6pnsrD6pn1YcRIxxbWB+h12osBqr++m7oOFkTRVp0Ck67XeZQg7QhqBVlOJYcl0TKPNY2IBFOj/Gyx+kiSmp6b0oXuQxOtH9X0JwgtG8BXFtg8dPw7Lt46Ejg1oD9RRQSHgJoy4xpUNubmU=
+  vestwise-infrastructure:pgPassword:
+    secure: v1:2sF/JaJ69akbU9GX:AXkfSnwMKzsNv/l3Kmj6kyzMaZjsqMhvBtiYsoaj64jmgBvXAwTo37nMgxkc/6mC
+  vestwise-infrastructure:host: dev.vestwise.co.uk

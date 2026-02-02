@@ -292,12 +292,22 @@ const RSUESPPCalculator = () => {
 
   const handleSaveConfiguration = async () => {
     try {
-      const uuid = configUuid || generateReadableUUID();
-      const config = { configType: 'rsu' as const, rsuGrants, esppConfig, params, baseCurrency, selectedCompany };
+      const config = {
+        configType: 'rsu' as const,
+        rsuGrants,
+        esppConfig,
+        params,
+        baseCurrency,
+        selectedCompany,
+        baseSalaryConfig,
+        bonusConfig,
+        carAllowanceConfig,
+      };
+      const name = configUuid || generateReadableUUID();
 
-      await saveConfig(uuid, config);
-      setConfigUuid(uuid);
-      setSaveStatus({ type: 'success', message: `Saved! Your ID: ${uuid}` });
+      const savedConfig = await saveConfig(config, name, false, configUuid || undefined);
+      setConfigUuid(savedConfig.id);
+      setSaveStatus({ type: 'success', message: `Saved! Config: ${savedConfig.name || savedConfig.id}` });
       setTimeout(() => setSaveStatus({ type: null, message: '' }), 5000);
     } catch (error) {
       setSaveStatus({ type: 'error', message: 'Failed to save configuration' });
@@ -312,6 +322,10 @@ const RSUESPPCalculator = () => {
       setParams(config.params || params);
       setBaseCurrency(config.baseCurrency || 'USD');
       setSelectedCompany(config.selectedCompany || null);
+      // Load compensation configs
+      if (config.baseSalaryConfig) setBaseSalaryConfig(config.baseSalaryConfig);
+      if (config.bonusConfig) setBonusConfig(config.bonusConfig);
+      if (config.carAllowanceConfig) setCarAllowanceConfig(config.carAllowanceConfig);
       setConfigUuid(loadUuid);
 
       // Fetch fresh stock price if a company was saved

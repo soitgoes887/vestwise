@@ -151,7 +151,6 @@ const PensionCalculator: React.FC = () => {
   // Save/Load handlers
   const handleSaveConfiguration = async () => {
     try {
-      const uuid = configUuid || generateReadableUUID();
       const config = {
         configType: 'pension' as const,
         pensionPots,
@@ -166,10 +165,11 @@ const PensionCalculator: React.FC = () => {
           contributionDestination
         }
       };
+      const name = configUuid || generateReadableUUID();
 
-      await saveConfig(uuid, config);
-      setConfigUuid(uuid);
-      setSaveStatus({ type: 'success', message: `Saved! Your ID: ${uuid}` });
+      const savedConfig = await saveConfig(config, name, false, configUuid || undefined);
+      setConfigUuid(savedConfig.id);
+      setSaveStatus({ type: 'success', message: `Saved! Config: ${savedConfig.name || savedConfig.id}` });
       setTimeout(() => setSaveStatus({ type: null, message: '' }), 5000);
     } catch (error) {
       setSaveStatus({ type: 'error', message: 'Failed to save configuration' });
