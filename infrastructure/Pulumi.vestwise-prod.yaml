@@ -1,0 +1,9 @@
+config:
+  vestwise-infrastructure:pgPassword:
+    secure: AAABAFXQghSRXQKrAPmpB/cHnHDw0i9DyBQenzMXN3tognz0Uwf9MXmn9Du3/xY/HhT3SkXhnZ/1MCaxbgI6OA==
+  vestwise-infrastructure:supabaseUrl:
+    secure: AAABADeazXIsiyXGf58Om3Vk7YT9T7jlZPAUX2cgylMqWawJabolxK3dsY4z1IFNJd/SeLZXfgJ3RSxpT5LVl2LhNZZZb/Ge
+  vestwise-infrastructure:supabaseAnonKey:
+    secure: AAABAACFVPUFS3pwYFKa6RYrRcQShlvaQQk2/azmnTXIsTonPYXEyJag1DbpoVSecFQeajCXGyqQ32QO1c6iR7x5YnFYuv9zC0U15C2LNk4fnqd/hMWr7XjmR7TE8aWGD88MdXOBZ/+9cBo6Al3xip2NsGrkJq1SsyRquT9Uw/1l4Cg+zSoHeBmpl55KC26pMQb+BGUKFToMjS5JzSYFrRXVYnMbYiKAG//Aq2smmq0qd+vc2vxoUt81FhFn3zoAGDMHZ+r4VJAl5eXPlNMX+ZjrE6PcyZxQ2e5gSuLaC46ongCvnvsXc0KMAps3ena2
+  vestwise-infrastructure:supabaseJwtSecret:
+    secure: AAABAF0YDlCQF3y49v19PVac3BBgNRecAX/q3PxSWqQh33izErwcUqEpCJTZ4bZoQV8k4KJa7keZRGWfSnTa7xGyGeNyOuQixVjCDGf/MalwZrfKGxCWF/4s8GK7it+8L+3+N+00GqExD/mV0DBQxqGvNWYwxop4

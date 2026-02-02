@@ -5,9 +5,17 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      image_tag:
-        description: 'Docker image tag (e.g., 1.4)'
+      environment:
+        description: 'Environment to deploy to'
         required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+      image_tag:
+        description: 'Docker image tag (optional - uses existing if not provided)'
+        required: false
 
 env:
   DOCKER_IMAGE: anicu/vestwise
@@ -27,13 +35,33 @@ jobs:
       - name: Generate version tag
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
             echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
           else
             # Auto-generate version: YYYY.MM.DD-short_sha
             DATE=$(date +'%Y.%m.%d')
             SHORT_SHA=$(git rev-parse --short HEAD)
             echo "tag=${DATE}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set environment variables
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          else
+            ENV="dev"
+          fi
+          echo "environment=${ENV}" >> $GITHUB_OUTPUT
+
+          if [ "$ENV" = "prod" ]; then
+            echo "stack=vestwise-prod" >> $GITHUB_OUTPUT
+            echo "namespace=vestwise" >> $GITHUB_OUTPUT
+            echo "host=vestwise.co.uk" >> $GITHUB_OUTPUT
+          else
+            echo "stack=vestwise-dev" >> $GITHUB_OUTPUT
+            echo "namespace=vestwise-dev" >> $GITHUB_OUTPUT
+            echo "host=dev.vestwise.co.uk" >> $GITHUB_OUTPUT
           fi
 
       - name: Setup Node.js
@@ -45,6 +73,9 @@ jobs:
         run: |
           corepack enable
           yarn install
+
+      - name: Run tests
+        run: yarn test --watchAll=false --passWithNoTests
 
       - name: Build React app
         env:
@@ -105,17 +136,17 @@ jobs:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
         run: |
-          pulumi stack select vestwise-dev
+          pulumi stack select ${{ steps.env.outputs.stack }}
           pulumi config set image ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.tag }}
           pulumi config set apiImage ${{ env.DOCKER_IMAGE_API }}:${{ steps.version.outputs.tag }}
-          pulumi config set namespace vestwise-dev
-          pulumi config set host dev.vestwise.co.uk
+          pulumi config set namespace ${{ steps.env.outputs.namespace }}
+          pulumi config set host ${{ steps.env.outputs.host }}
           pulumi up --yes
 
       - name: Verify deployment
         run: |
-          kubectl rollout status deployment/vestwise -n vestwise-dev --timeout=120s
-          kubectl rollout status deployment/vestwise-api -n vestwise-dev --timeout=120s
+          kubectl rollout status deployment/vestwise -n ${{ steps.env.outputs.namespace }} --timeout=120s
+          kubectl rollout status deployment/vestwise-api -n ${{ steps.env.outputs.namespace }} --timeout=120s
 
       - name: Create GitHub Release
         if: github.event_name == 'push'
@@ -126,6 +157,7 @@ jobs:
           body: |
             Automated release from commit ${{ github.sha }}
 
+            **Environment:** ${{ steps.env.outputs.environment }}
             **Changes:** ${{ github.event.head_commit.message }}
 
             **Docker Images:**
