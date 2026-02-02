@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { saveConfig, loadConfig, generateReadableUUID, listConfigs, ConfigResponse } from './services/configService';
+import { saveConfig, loadConfig, generateReadableUUID, listConfigs, renameConfig, ConfigResponse } from './services/configService';
 import { fetchUsdToGbpRateECB, ExchangeRateData } from './services/exchangeRateService';
 import { fetchStockPrice, COMPANIES, Company, StockPriceData } from './services/stockPriceService';
 import { useAuth } from './contexts/AuthContext';
@@ -104,6 +104,8 @@ const RSUESPPCalculator = () => {
   const [showSaveLoad, setShowSaveLoad] = useState(false);
   const [savedConfigs, setSavedConfigs] = useState<ConfigResponse[]>([]);
   const [loadingConfigs, setLoadingConfigs] = useState(false);
+  const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
+  const [editingConfigName, setEditingConfigName] = useState('');
 
   // Exchange rate state
   const [exchangeRateData, setExchangeRateData] = useState<ExchangeRateData | null>(null);
@@ -377,6 +379,19 @@ const RSUESPPCalculator = () => {
       setTimeout(() => setLoadStatus({ type: null, message: '' }), 3000);
     } catch (error) {
       setLoadStatus({ type: 'error', message: 'Failed to load configuration' });
+    }
+  };
+
+  const handleRenameConfig = async (configId: string) => {
+    try {
+      const updatedConfig = await renameConfig(configId, editingConfigName);
+      setSavedConfigs(savedConfigs.map(c =>
+        c.id === configId ? { ...c, name: updatedConfig.name } : c
+      ));
+      setEditingConfigId(null);
+      setEditingConfigName('');
+    } catch (error) {
+      console.error('Failed to rename config:', error);
     }
   };
 
@@ -1452,22 +1467,73 @@ const RSUESPPCalculator = () => {
                       ) : (
                         <div className="space-y-2 max-h-48 overflow-y-auto">
                           {savedConfigs.map((config) => (
-                            <button
+                            <div
                               key={config.id}
-                              onClick={() => handleLoadConfiguration(config.id)}
-                              className={`w-full text-left p-2 rounded border transition-colors ${
+                              className={`p-2 rounded border transition-colors ${
                                 configUuid === config.id
                                   ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/30'
-                                  : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                                  : 'border-gray-200 dark:border-gray-600'
                               }`}
                             >
-                              <div className="font-medium text-gray-900 dark:text-white">
-                                {config.name || 'Unnamed Config'}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                Updated {new Date(config.updated_at).toLocaleDateString()}
-                              </div>
-                            </button>
+                              {editingConfigId === config.id ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="text"
+                                    value={editingConfigName}
+                                    onChange={(e) => setEditingConfigName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleRenameConfig(config.id);
+                                      if (e.key === 'Escape') {
+                                        setEditingConfigId(null);
+                                        setEditingConfigName('');
+                                      }
+                                    }}
+                                    placeholder="Empty = generate name"
+                                    className="flex-1 p-1 text-sm border rounded dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => handleRenameConfig(config.id)}
+                                    className="text-green-600 dark:text-green-400 hover:text-green-800 text-sm font-medium"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingConfigId(null);
+                                      setEditingConfigName('');
+                                    }}
+                                    className="text-gray-600 dark:text-gray-400 hover:text-gray-800 text-sm"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between">
+                                  <button
+                                    onClick={() => handleLoadConfiguration(config.id)}
+                                    className="flex-1 text-left"
+                                  >
+                                    <div className="font-medium text-gray-900 dark:text-white">
+                                      {config.name || 'Unnamed Config'}
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                                      Updated {new Date(config.updated_at).toLocaleDateString()}
+                                    </div>
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingConfigId(config.id);
+                                      setEditingConfigName(config.name || '');
+                                    }}
+                                    className="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 text-xs font-medium"
+                                  >
+                                    Rename
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           ))}
                         </div>
                       )}

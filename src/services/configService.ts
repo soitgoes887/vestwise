@@ -146,6 +146,25 @@ export async function deleteConfig(id: string): Promise<void> {
   }
 }
 
+export async function renameConfig(id: string, newName: string): Promise<ConfigResponse> {
+  const headers = await getAuthHeaders();
+  // If empty string, generate a docker-style name
+  const name = newName.trim() || generateReadableName();
+
+  const response = await fetch(`${API_BASE}/configs/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ name }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+  }
+
+  return response.json();
+}
+
 // Legacy function for backward compatibility - now just wraps saveConfig
 export async function loadConfig(id: string): Promise<SavedConfig> {
   const config = await getConfig(id);
