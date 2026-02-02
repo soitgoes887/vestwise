@@ -99,7 +99,6 @@ const RSUESPPCalculator = () => {
 
   // Save/Load configuration state
   const [configUuid, setConfigUuid] = useState('');
-  const [loadUuid, setLoadUuid] = useState('');
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
   const [loadStatus, setLoadStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
   const [showSaveLoad, setShowSaveLoad] = useState(false);
@@ -341,8 +340,7 @@ const RSUESPPCalculator = () => {
     }
   };
 
-  const handleLoadConfiguration = async (idToLoad?: string) => {
-    const configId = idToLoad || loadUuid;
+  const handleLoadConfiguration = async (configId: string) => {
     try {
       const config = await loadConfig(configId);
       setRsuGrants(config.rsuGrants || []);
