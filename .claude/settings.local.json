@@ -28,7 +28,9 @@
       "Bash(pip install:*)",
       "Bash(ls:*)",
       "Bash(yarn install:*)",
-      "Bash(yarn build:*)"
+      "Bash(yarn build:*)",
+      "Bash(git -C /Users/anicu/Projects/vestwise ls-files:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
