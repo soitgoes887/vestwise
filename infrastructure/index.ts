@@ -9,6 +9,7 @@ const replicas = config.getNumber("replicas") || 2;
 const host = config.get("host") || "vestwise.co.uk";
 const kubeconfigContext = config.get("kubeconfigContext") || "kubernetes-admin@kubernetes";
 const imagePullPolicy = config.get("imagePullPolicy") || "Always"; // Use "Never" or "IfNotPresent" for local
+const namespaceName = config.get("namespace") || "vestwise"; // e.g., vestwise-dev, vestwise-prod
 
 // Secrets (encrypted in Pulumi config)
 const pgPassword = config.requireSecret("pgPassword");
@@ -22,10 +23,10 @@ const k8sProvider = new k8s.Provider("k8s-provider", {
     enableServerSideApply: true,
 });
 
-// Create vestwise namespace
+// Create namespace
 const namespace = new k8s.core.v1.Namespace("vestwise-namespace", {
     metadata: {
-        name: "vestwise",
+        name: namespaceName,
     },
 }, { provider: k8sProvider });
 
@@ -37,7 +38,7 @@ const namespace = new k8s.core.v1.Namespace("vestwise-namespace", {
 const postgresSecret = new k8s.core.v1.Secret("postgres-secret", {
     metadata: {
         name: "postgres-credentials",
-        namespace: "vestwise",
+        namespace: namespaceName,
     },
     type: "Opaque",
     stringData: {
@@ -51,7 +52,7 @@ const postgresSecret = new k8s.core.v1.Secret("postgres-secret", {
 const postgresInitConfigMap = new k8s.core.v1.ConfigMap("postgres-init-configmap", {
     metadata: {
         name: "postgres-init",
-        namespace: "vestwise",
+        namespace: namespaceName,
     },
     data: {
         "init.sql": `
@@ -78,17 +79,17 @@ CREATE INDEX IF NOT EXISTS idx_user_configs_type ON user_configs(user_id, config
     },
 }, { provider: k8sProvider, dependsOn: [namespace] });
 
-// PostgreSQL PersistentVolume (hostPath for single-node)
+// PostgreSQL PersistentVolume (hostPath for single-node) - unique per namespace
 const postgresPV = new k8s.core.v1.PersistentVolume("postgres-pv", {
     metadata: {
-        name: "vestwise-postgres-pv",
-        labels: { type: "local", app: "postgres" },
+        name: `${namespaceName}-postgres-pv`,
+        labels: { type: "local", app: "postgres", namespace: namespaceName },
     },
     spec: {
-        storageClassName: "manual",
+        storageClassName: `${namespaceName}-manual`,
         capacity: { storage: "2Gi" },
         accessModes: ["ReadWriteOnce"],
-        hostPath: { path: "/data/vestwise-postgres" },
+        hostPath: { path: `/data/${namespaceName}-postgres` },
         persistentVolumeReclaimPolicy: "Retain",
     },
 }, { provider: k8sProvider });
@@ -97,16 +98,16 @@ const postgresPV = new k8s.core.v1.PersistentVolume("postgres-pv", {
 const postgresPVC = new k8s.core.v1.PersistentVolumeClaim("postgres-pvc", {
     metadata: {
         name: "postgres-data",
-        namespace: "vestwise",
+        namespace: namespaceName,
     },
     spec: {
-        storageClassName: "manual",
+        storageClassName: `${namespaceName}-manual`,
         accessModes: ["ReadWriteOnce"],
         resources: {
             requests: { storage: "2Gi" },
         },
         selector: {
-            matchLabels: { type: "local", app: "postgres" },
+            matchLabels: { type: "local", app: "postgres", namespace: namespaceName },
         },
     },
 }, { provider: k8sProvider, dependsOn: [namespace, postgresPV] });
@@ -115,7 +116,7 @@ const postgresPVC = new k8s.core.v1.PersistentVolumeClaim("postgres-pvc", {
 const postgresStatefulSet = new k8s.apps.v1.StatefulSet("postgres-statefulset", {
     metadata: {
         name: "postgres",
-        namespace: "vestwise",
+        namespace: namespaceName,
     },
     spec: {
         serviceName: "postgres",
@@ -179,7 +180,7 @@ const postgresStatefulSet = new k8s.apps.v1.StatefulSet("postgres-statefulset", 
 const postgresService = new k8s.core.v1.Service("postgres-service", {
     metadata: {
         name: "postgres",
-        namespace: "vestwise",
+        namespace: namespaceName,
     },
     spec: {
         type: "ClusterIP",
@@ -195,7 +196,7 @@ const postgresService = new k8s.core.v1.Service("postgres-service", {
 const postgresBackupCronJob = new k8s.batch.v1.CronJob("postgres-backup-cronjob", {
     metadata: {
         name: "postgres-backup",
-        namespace: "vestwise",
+        namespace: namespaceName,
     },
     spec: {
         schedule: "0 2 * * *", // Daily at 2 AM
@@ -224,7 +225,7 @@ const postgresBackupCronJob = new k8s.batch.v1.CronJob("postgres-backup-cronjob"
                         }],
                         volumes: [{
                             name: "backup-volume",
-                            hostPath: { path: "/data/vestwise-backups", type: "DirectoryOrCreate" },
+                            hostPath: { path: `/data/${namespaceName}-backups`, type: "DirectoryOrCreate" },
                         }],
                     },
                 },
@@ -241,7 +242,7 @@ const postgresBackupCronJob = new k8s.batch.v1.CronJob("postgres-backup-cronjob"
 const apiSecret = new k8s.core.v1.Secret("api-secret", {
     metadata: {
         name: "api-credentials",
-        namespace: "vestwise",
+        namespace: namespaceName,
     },
     type: "Opaque",
     stringData: {
@@ -256,7 +257,7 @@ const apiSecret = new k8s.core.v1.Secret("api-secret", {
 const apiDeployment = new k8s.apps.v1.Deployment("api-deployment", {
     metadata: {
         name: "vestwise-api",
-        namespace: "vestwise",
+        namespace: namespaceName,
         labels: { app: "vestwise-api" },
         annotations: {
             "pulumi.com/patchForce": "true",
@@ -304,7 +305,7 @@ const apiDeployment = new k8s.apps.v1.Deployment("api-deployment", {
 const apiService = new k8s.core.v1.Service("api-service", {
     metadata: {
         name: "vestwise-api",
-        namespace: "vestwise",
+        namespace: namespaceName,
     },
     spec: {
         type: "ClusterIP",
@@ -324,7 +325,7 @@ const apiService = new k8s.core.v1.Service("api-service", {
 const deployment = new k8s.apps.v1.Deployment("vestwise-deployment", {
     metadata: {
         name: "vestwise",
-        namespace: "vestwise",
+        namespace: namespaceName,
         labels: { app: "vestwise" },
         annotations: {
             "pulumi.com/patchForce": "true",
@@ -381,7 +382,7 @@ const deployment = new k8s.apps.v1.Deployment("vestwise-deployment", {
 const service = new k8s.core.v1.Service("vestwise-service", {
     metadata: {
         name: "vestwise",
-        namespace: "vestwise",
+        namespace: namespaceName,
     },
     spec: {
         type: "ClusterIP",
@@ -393,11 +394,11 @@ const service = new k8s.core.v1.Service("vestwise-service", {
     },
 }, { provider: k8sProvider, dependsOn: [namespace] });
 
-// Create vestwise ingress with TLS
+// Create vestwise ingress with TLS - unique secret name per namespace
 const ingress = new k8s.networking.v1.Ingress("vestwise-ingress", {
     metadata: {
         name: "vestwise",
-        namespace: "vestwise",
+        namespace: namespaceName,
         annotations: {
             "cert-manager.io/cluster-issuer": "letsencrypt-prod",
         },
@@ -406,7 +407,7 @@ const ingress = new k8s.networking.v1.Ingress("vestwise-ingress", {
         ingressClassName: "nginx",
         tls: [{
             hosts: [host],
-            secretName: "vestwise-tls",
+            secretName: `${namespaceName}-tls`,
         }],
         rules: [{
             host: host,
