@@ -18,16 +18,14 @@ async def get_current_user(
     token = credentials.credentials
 
     try:
-        # First, decode without verification to check the algorithm
-        unverified = jwt.get_unverified_header(token)
-        alg = unverified.get("alg", "HS256")
-
         # Supabase uses HS256 with the JWT secret
+        # Force HS256 algorithm regardless of token header to prevent algorithm confusion attacks
         payload = jwt.decode(
             token,
             settings.supabase_jwt_secret,
-            algorithms=[alg],
+            algorithms=["HS256"],
             audience="authenticated",
+            options={"verify_aud": True},
         )
 
         user_id = payload.get("sub")
@@ -59,15 +57,13 @@ async def get_optional_user(
         token = auth_header.split(" ")[1]
         settings = get_settings()
 
-        # First, decode without verification to check the algorithm
-        unverified = jwt.get_unverified_header(token)
-        alg = unverified.get("alg", "HS256")
-
+        # Supabase uses HS256 with the JWT secret
         payload = jwt.decode(
             token,
             settings.supabase_jwt_secret,
-            algorithms=[alg],
+            algorithms=["HS256"],
             audience="authenticated",
+            options={"verify_aud": True},
         )
         return {
             "id": payload.get("sub"),
