@@ -196,37 +196,3 @@ export async function fetchStockPrice(ticker: string): Promise<StockPriceData> {
     throw error;
   }
 }
-
-// Alternative: Fallback to finnhub.io (also free, different rate limits)
-export async function fetchStockPriceFinnhub(ticker: string): Promise<StockPriceData> {
-  const FINNHUB_API_KEY = process.env.REACT_APP_FINNHUB_API_KEY;
-
-  if (!FINNHUB_API_KEY) {
-    throw new Error('Finnhub API key not configured');
-  }
-
-  try {
-    const url = `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_API_KEY}`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (!data.c) {
-      throw new Error('No price data available');
-    }
-
-    return {
-      price: data.c, // current price
-      change: data.d, // change
-      changePercent: data.dp, // percent change
-      lastUpdated: new Date(data.t * 1000) // timestamp
-    };
-  } catch (error) {
-    console.error('Error fetching stock price from Finnhub:', error);
-    throw error;
-  }
-}

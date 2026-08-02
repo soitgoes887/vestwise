@@ -79,7 +79,6 @@ jobs:
       - name: Build React app
         env:
           REACT_APP_ALPHA_VANTAGE_API_KEY: ${{ secrets.REACT_APP_ALPHA_VANTAGE_API_KEY }}
-          REACT_APP_FMP_API_KEY: ${{ secrets.REACT_APP_FMP_API_KEY }}
         run: yarn build
 
       - name: Set up QEMU
