@@ -1,0 +1,16 @@
+{
+  // Static-assets-only Worker: there is no server-side code, hence no "main".
+  "name": "vestwise",
+  "compatibility_date": "2026-08-02",
+  "assets": {
+    "directory": "build",
+    // Serve index.html with a 200 for unmatched paths so client-side routes
+    // (/rsu, /pension, /about, /contact) work on direct navigation and reload.
+    // This is the Workers equivalent of the Pages-only "_redirects" rewrite;
+    // Workers does not support 200-rewrites in _redirects.
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
