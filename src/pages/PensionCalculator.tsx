@@ -1,8 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { saveConfig, loadConfig, generateReadableUUID, listConfigs, renameConfig, deleteConfig, ConfigResponse } from '../services/configService';
-import { useAuth } from '../contexts/AuthContext';
 
 interface PensionPot {
   id: string;
@@ -15,9 +12,6 @@ interface PensionPot {
 }
 
 const PensionCalculator: React.FC = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-
   // Pension Pots state
   const [pensionPots, setPensionPots] = useState<PensionPot[]>([]);
   const [showAddPot, setShowAddPot] = useState(false);
@@ -47,15 +41,6 @@ const PensionCalculator: React.FC = () => {
   const [retirementAge, setRetirementAge] = useState<string>('');
   const [annualReturn, setAnnualReturn] = useState<string>('');
   const [salaryIncrease, setSalaryIncrease] = useState<string>('2');
-  // Save/Load configuration state
-  const [configUuid, setConfigUuid] = useState('');
-  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
-  const [loadStatus, setLoadStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
-  const [showSaveLoad, setShowSaveLoad] = useState(false);
-  const [savedConfigs, setSavedConfigs] = useState<ConfigResponse[]>([]);
-  const [loadingConfigs, setLoadingConfigs] = useState(false);
-  const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
-  const [editingConfigName, setEditingConfigName] = useState('');
 
   // Comparison mode state
   const [compareMode, setCompareMode] = useState(false);
@@ -63,27 +48,6 @@ const PensionCalculator: React.FC = () => {
 
   // Contribution destination state
   const [contributionDestination, setContributionDestination] = useState<string>('split-equally');
-
-  // Fetch saved configs when user is authenticated
-  useEffect(() => {
-    if (user) {
-      fetchSavedConfigs();
-    } else {
-      setSavedConfigs([]);
-    }
-  }, [user]);
-
-  const fetchSavedConfigs = async () => {
-    setLoadingConfigs(true);
-    try {
-      const configs = await listConfigs('pension');
-      setSavedConfigs(configs);
-    } catch (error) {
-      console.error('Failed to fetch saved configs:', error);
-    } finally {
-      setLoadingConfigs(false);
-    }
-  };
 
   // Handlers for pension pots
   const handleAddPot = () => {
@@ -178,90 +142,6 @@ const PensionCalculator: React.FC = () => {
   };
 
   // Save/Load handlers
-  const handleSaveConfiguration = async () => {
-    try {
-      const config = {
-        configType: 'pension' as const,
-        pensionPots,
-        pensionInputs: {
-          pensionableIncome,
-          ownContributionPct,
-          employerContributionPct,
-          currentAge,
-          retirementAge,
-          annualReturn,
-          salaryIncrease,
-          contributionDestination
-        }
-      };
-      const name = configUuid || generateReadableUUID();
-
-      const savedConfig = await saveConfig(config, name, false, configUuid || undefined);
-      setConfigUuid(savedConfig.id);
-      setSaveStatus({ type: 'success', message: `Saved! Config: ${savedConfig.name || savedConfig.id}` });
-      setTimeout(() => setSaveStatus({ type: null, message: '' }), 5000);
-    } catch (error) {
-      setSaveStatus({ type: 'error', message: 'Failed to save configuration' });
-    }
-  };
-
-  const handleLoadConfiguration = async (configId: string) => {
-    try {
-      const config = await loadConfig(configId);
-
-      // Check if this is a pension configuration
-      if (config.configType !== 'pension' && !config.pensionPots) {
-        setLoadStatus({ type: 'error', message: 'This ID contains an RSU/ESPP configuration, not a pension plan.' });
-        return;
-      }
-
-      setPensionPots(config.pensionPots || []);
-      if (config.pensionInputs) {
-        setPensionableIncome(config.pensionInputs.pensionableIncome || '80000');
-        setOwnContributionPct(config.pensionInputs.ownContributionPct || '8');
-        setEmployerContributionPct(config.pensionInputs.employerContributionPct || '10');
-        setCurrentAge(config.pensionInputs.currentAge || '37');
-        setRetirementAge(config.pensionInputs.retirementAge || '65');
-        setAnnualReturn(config.pensionInputs.annualReturn || '5');
-        setSalaryIncrease((config.pensionInputs as any).salaryIncrease || '2');
-        setContributionDestination((config.pensionInputs as any).contributionDestination || 'split-equally');
-      }
-      setConfigUuid(configId);
-
-      setLoadStatus({ type: 'success', message: 'Configuration loaded successfully!' });
-      setTimeout(() => setLoadStatus({ type: null, message: '' }), 5000);
-    } catch (error) {
-      setLoadStatus({ type: 'error', message: 'Failed to load configuration. Check your ID and try again.' });
-    }
-  };
-
-  const handleRenameConfig = async (configId: string) => {
-    try {
-      const updatedConfig = await renameConfig(configId, editingConfigName);
-      setSavedConfigs(savedConfigs.map(c =>
-        c.id === configId ? { ...c, name: updatedConfig.name } : c
-      ));
-      setEditingConfigId(null);
-      setEditingConfigName('');
-    } catch (error) {
-      console.error('Failed to rename config:', error);
-    }
-  };
-
-  const handleDeleteConfig = async (configId: string, configName: string) => {
-    if (!window.confirm(`Delete "${configName}"? This cannot be undone.`)) {
-      return;
-    }
-    try {
-      await deleteConfig(configId);
-      setSavedConfigs(savedConfigs.filter(c => c.id !== configId));
-      if (configUuid === configId) {
-        setConfigUuid('');
-      }
-    } catch (error) {
-      console.error('Failed to delete config:', error);
-    }
-  };
 
   // Parse input values
   const income = parseFloat(pensionableIncome) || 0;
@@ -905,160 +785,6 @@ const PensionCalculator: React.FC = () => {
             </ul>
           </div>
 
-          {/* Save/Load Configuration */}
-          <div className="bg-pink-50 dark:bg-gray-800 p-4 rounded-lg border-2 border-pink-200 dark:border-pink-600">
-            <h2 className="text-xl font-semibold text-pink-900 dark:text-white mb-3">Save/Load Configuration</h2>
-
-            {!user ? (
-              <div className="text-center py-4">
-                <p className="text-gray-600 dark:text-gray-400 mb-3">Sign in to save and load your configurations</p>
-                <button
-                  onClick={() => navigate('/login', { state: { from: { pathname: '/pension' } } })}
-                  className="px-6 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors"
-                >
-                  Sign In to Save
-                </button>
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={() => setShowSaveLoad(!showSaveLoad)}
-                  className="w-full px-4 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors"
-                >
-                  {showSaveLoad ? 'Hide' : 'Save or Load Config'}
-                </button>
-
-                {showSaveLoad && (
-                  <div className="mt-4 space-y-4 bg-white dark:bg-gray-700 p-3 rounded border border-pink-300 dark:border-pink-600">
-                    <div>
-                      <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Save Configuration</h3>
-                      {configUuid && (
-                        <div className="mb-2 p-2 bg-blue-100 dark:bg-blue-900 rounded text-sm text-gray-900 dark:text-white">
-                          <strong>Current:</strong> {savedConfigs.find(c => c.id === configUuid)?.name || configUuid}
-                        </div>
-                      )}
-                      <button
-                        onClick={handleSaveConfiguration}
-                        className="w-full px-4 py-2 bg-pink-600 dark:bg-pink-500 text-white rounded font-semibold hover:bg-pink-700 dark:hover:bg-pink-600 transition-colors"
-                      >
-                        {configUuid ? 'Update Configuration' : 'Save New Configuration'}
-                      </button>
-                      {saveStatus.type && (
-                        <div className={`mt-2 p-2 rounded text-sm ${
-                          saveStatus.type === 'success'
-                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                            : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                        }`}>
-                          {saveStatus.message}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="pt-3 border-t border-pink-200 dark:border-pink-700">
-                      <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">Your Saved Configurations</h3>
-                      {loadingConfigs ? (
-                        <p className="text-gray-500 dark:text-gray-400 text-sm">Loading...</p>
-                      ) : savedConfigs.length === 0 ? (
-                        <p className="text-gray-500 dark:text-gray-400 text-sm">No saved configurations yet</p>
-                      ) : (
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {savedConfigs.map((config) => (
-                            <div
-                              key={config.id}
-                              className={`p-2 rounded border transition-colors ${
-                                configUuid === config.id
-                                  ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/30'
-                                  : 'border-gray-200 dark:border-gray-600'
-                              }`}
-                            >
-                              {editingConfigId === config.id ? (
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="text"
-                                    value={editingConfigName}
-                                    onChange={(e) => setEditingConfigName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') handleRenameConfig(config.id);
-                                      if (e.key === 'Escape') {
-                                        setEditingConfigId(null);
-                                        setEditingConfigName('');
-                                      }
-                                    }}
-                                    placeholder="Empty = generate name"
-                                    className="flex-1 p-1 text-sm border rounded dark:bg-gray-600 dark:text-white dark:border-gray-500"
-                                    autoFocus
-                                  />
-                                  <button
-                                    onClick={() => handleRenameConfig(config.id)}
-                                    className="text-green-600 dark:text-green-400 hover:text-green-800 text-sm font-medium"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setEditingConfigId(null);
-                                      setEditingConfigName('');
-                                    }}
-                                    className="text-gray-600 dark:text-gray-400 hover:text-gray-800 text-sm"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-between">
-                                  <button
-                                    onClick={() => handleLoadConfiguration(config.id)}
-                                    className="flex-1 text-left"
-                                  >
-                                    <div className="font-medium text-gray-900 dark:text-white">
-                                      {config.name || 'Unnamed Config'}
-                                    </div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      Updated {new Date(config.updated_at).toLocaleDateString()}
-                                    </div>
-                                  </button>
-                                  <div className="flex gap-2 ml-2">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditingConfigId(config.id);
-                                        setEditingConfigName(config.name || '');
-                                      }}
-                                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 text-xs font-medium"
-                                    >
-                                      Rename
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteConfig(config.id, config.name || 'Unnamed Config');
-                                      }}
-                                      className="text-red-600 dark:text-red-400 hover:text-red-800 text-xs font-medium"
-                                    >
-                                      Delete
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {loadStatus.type && (
-                        <div className={`mt-2 p-2 rounded text-sm ${
-                          loadStatus.type === 'success'
-                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                            : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                        }`}>
-                          {loadStatus.message}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
         </div>
 
         {/* Right side - Charts and results */}

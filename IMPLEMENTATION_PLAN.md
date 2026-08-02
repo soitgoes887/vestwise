@@ -1,5 +1,10 @@
 # Vestwise User Authentication & PostgreSQL Implementation
 
+> **REVERTED — historical record only.** Authentication, the FastAPI backend and
+> the self-hosted PostgreSQL described below were removed on 2026-08-02. Vestwise
+> is now a static React site with no backend. Nothing in this document reflects
+> the current architecture; see `README.md`.
+
 > Implemented: 2026-02-01
 > Status: Complete (Python/FastAPI backend)
 
