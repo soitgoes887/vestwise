@@ -1,3 +1,0 @@
-name: vestwise-infrastructure
-runtime: nodejs
-description: AWS infrastructure for Vestwise config storage

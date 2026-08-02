@@ -1,6 +1,0 @@
-config:
-  vestwise-infrastructure:image: anicu/vestwise:local
-  vestwise-infrastructure:namespace: vestwise-local
-  vestwise-infrastructure:host: vestwise.local
-  vestwise-infrastructure:kubeconfigContext: minikube
-  vestwise-infrastructure:imagePullPolicy: Never

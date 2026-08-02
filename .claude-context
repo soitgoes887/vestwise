@@ -10,8 +10,8 @@
 - React 19 + TypeScript
 - Tailwind CSS (dark mode support)
 - Recharts for visualizations
-- AWS Lambda + S3 (serverless backend)
-- Pulumi (Infrastructure as Code)
+- No backend — entirely client-side
+- Hosted on Cloudflare Workers static assets (see `wrangler.jsonc`)
 
 **Website:** https://vestwise.co.uk
 **Current Version:** 0.2.1
@@ -28,13 +28,12 @@ vestwise/
 │   │   ├── Contact.tsx             # Contact page
 │   │   └── PensionCalculator.tsx   # Pension calculator (NEW in 0.2.0)
 │   ├── services/
-│   │   ├── configService.ts        # Save/load configs to AWS
 │   │   ├── exchangeRateService.ts  # Currency conversion
 │   │   └── stockPriceService.ts    # Stock prices
 │   ├── uk_rsu_espp_calculator.tsx  # Main RSU/ESPP calculator
 │   ├── App.tsx                     # Root component
 │   └── index.tsx                   # Entry point
-├── infrastructure/                  # AWS Pulumi infrastructure
+├── wrangler.jsonc                  # Cloudflare Workers config
 ├── public/                         # Static assets
 └── package.json                    # Dependencies
 ```
@@ -123,39 +122,32 @@ vestwise/
 
 ## Development Commands
 ```bash
-npm start           # Dev server (localhost:3000)
-npm run build       # Production build
-npm run deploy      # Deploy to GitHub Pages
-npm test            # Run tests
+yarn start          # Dev server (localhost:3000)
+yarn build          # Production build
+yarn test           # Run tests
+yarn deploy         # Manual deploy (build + npx wrangler deploy)
+npx tsc --noEmit    # Type check
 ```
 
-## AWS Infrastructure
-```bash
-cd infrastructure
-pulumi up           # Deploy infrastructure
-pulumi stack output # View Lambda URLs
-```
+## Deployment
+Cloudflare Workers static assets. Pushing to `main` triggers a Cloudflare build
+straight from GitHub; there is no deploy workflow in the repo. SPA routing comes
+from `assets.not_found_handling: "single-page-application"` in `wrangler.jsonc`.
 
-**IMPORTANT: Configure Lambda URLs**
-The save/load functionality requires Lambda Function URLs to be configured. See `LAMBDA_SETUP.md` for detailed instructions.
+`.github/workflows/pr-validation.yml` is the only CI gate (tests, build, lint on
+PRs) — Cloudflare does not run the test suite.
 
-**Quick Setup:**
-```bash
-./configure-lambda-urls.sh  # Auto-configure URLs
-npm run build               # Rebuild with URLs
-npm run deploy             # Deploy to production
-```
+**Environment variables:** one, set on the Worker:
+`REACT_APP_ALPHA_VANTAGE_API_KEY`. It is inlined into the bundle at build time so
+it is public, not secret. Without it `stockPriceService.ts` falls back to Alpha
+Vantage's `demo` key and share prices silently stop resolving.
 
-**Manual Setup:**
-1. Get URLs: `cd infrastructure && pulumi stack output --json`
-2. Create `.env.local` file with:
-   ```
-   REACT_APP_SAVE_CONFIG_URL=https://xxx.lambda-url.region.on.aws/
-   REACT_APP_LOAD_CONFIG_URL=https://yyy.lambda-url.region.on.aws/
-   ```
-3. Rebuild: `npm run build`
-
-Without configured Lambda URLs, save/load will fail with "Unexpected token '<'" errors.
+## History
+Hosted on GitHub Pages until 2025-12, then on a self-managed Kubernetes cluster
+(Pulumi, Docker, nginx) with a FastAPI backend, PostgreSQL and Supabase auth for
+saved configurations. All of that — auth, the API, the database, and the entire
+k8s deployment — was removed in 2026-08. The save/load feature no longer exists.
+Consult git history for the old Pulumi/Docker/Kubernetes configuration.
 
 ## External APIs
 - **Frankfurter API (ECB):** USD/GBP exchange rates (no key)

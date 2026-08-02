@@ -1,7 +1,0 @@
-config:
-  # Production runs in the "vestwise" namespace, not "vestwise-prod". The deploy
-  # workflow sets this explicitly; keep the two in agreement so that a local
-  # `pulumi up -s vestwise-prod` targets production rather than creating an
-  # empty parallel namespace.
-  vestwise-infrastructure:namespace: vestwise
-  vestwise-infrastructure:host: vestwise.co.uk
