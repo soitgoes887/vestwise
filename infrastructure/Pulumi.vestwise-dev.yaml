@@ -3,4 +3,7 @@ config:
   vestwise-infrastructure:image: anicu/vestwise:latest
   vestwise-infrastructure:replicas: "2"
   vestwise-infrastructure:kubeconfigContext: kubernetes-admin@kubernetes
+  # Set explicitly: index.ts defaults namespace to "vestwise", which is PRODUCTION.
+  # Without this, a local `pulumi up -s vestwise-dev` would deploy into prod.
+  vestwise-infrastructure:namespace: vestwise-dev
   vestwise-infrastructure:host: dev.vestwise.co.uk

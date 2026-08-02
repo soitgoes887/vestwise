@@ -71,7 +71,7 @@ jobs:
       - name: Install dependencies
         run: |
           corepack enable
-          yarn install
+          yarn install --frozen-lockfile
 
       - name: Run tests
         run: yarn test --watchAll=false --passWithNoTests
@@ -108,9 +108,7 @@ jobs:
 
       - name: Install infrastructure dependencies
         working-directory: infrastructure
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
+        run: npm install
 
       - name: Setup kubeconfig
         run: |

@@ -2,6 +2,7 @@
 node_modules/
 /.pnp
 .pnp.js
+# The app uses yarn and commits yarn.lock.
 package-lock.json
 
 # Testing
@@ -43,4 +44,3 @@ yarn-error.log*
 .env
 .claude/
 .claude/settings.local.json
-yarn.lock
